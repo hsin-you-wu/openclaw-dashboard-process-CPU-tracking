@@ -24,5 +24,5 @@
 
 ## 4. Documentation
 
-- [ ] 4.1 Add comment in vercel.json explaining the SPA routing configuration
-- [ ] 4.2 Update README.md with deployment notes if needed
+- [x] 4.1 Add comment in vercel.json explaining the SPA routing configuration
+- [x] 4.2 Update README.md with deployment notes if needed
