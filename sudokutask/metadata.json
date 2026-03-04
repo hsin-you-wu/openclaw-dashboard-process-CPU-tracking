@@ -1,0 +1,5 @@
+{
+  "name": "Sudoku",
+  "description": "A clean, responsive single-player Sudoku game.",
+  "requestFramePermissions": []
+}
