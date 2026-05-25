@@ -5902,14 +5902,17 @@ async function dockerAction(action, id) {
         shade: rng() * 30 - 15,
       });
     }
-    const plantCount = Math.max(4, Math.floor(state.w / 180));
+    const plantTypes = ['kelp', 'kelp', 'fan', 'grass'];
+    const plantCount = Math.max(5, Math.floor(state.w / 160));
     for (let i = 0; i < plantCount; i++) {
       state.plants.push({
-        x: (i + 0.5) * (state.w / plantCount) + rng() * 80 - 40,
-        h: rng() * 90 + 70,
+        x: (i + 0.5) * (state.w / plantCount) + rng() * 70 - 35,
+        h: rng() * 110 + 80,
         seed: rng() * Math.PI * 2,
-        hue: 110 + rng() * 40,
-        thickness: 3 + rng() * 2,
+        hue: 100 + rng() * 60,
+        thickness: 2.4 + rng() * 2,
+        type: plantTypes[Math.floor(rng() * plantTypes.length)],
+        bladeCount: 4 + Math.floor(rng() * 4),
       });
     }
     const sandCount = Math.floor(state.w / 6);
@@ -5942,18 +5945,34 @@ async function dockerAction(action, id) {
       bob: 0,
     };
     state.fish = [];
-    const fishColors = ['#f5b342', '#ef6c4d', '#6dd3ff', '#a0e26b', '#ff8fb1'];
-    const fishCount = Math.max(4, Math.floor(state.w / 280));
+    const speciesDefs = [
+      { name: 'tropical', colors: ['#f5b342', '#f59e0b', '#ef6c4d'], stripeColor: '#3a2410', body: { wMul: 1.0, hMul: 0.55 }, stripes: 3 },
+      { name: 'clownfish', colors: ['#ff7a2b', '#ff8f3d'], stripeColor: '#ffffff', body: { wMul: 0.95, hMul: 0.6 }, stripes: 3 },
+      { name: 'tang', colors: ['#3aa1ff', '#5cc0ff', '#1f7ed1'], stripeColor: '#ffe066', body: { wMul: 0.85, hMul: 0.78 }, stripes: 0, accent: 'tangPatch' },
+      { name: 'neon', colors: ['#6dd3ff', '#9ce4ff'], stripeColor: '#ff4f7a', body: { wMul: 1.05, hMul: 0.42 }, stripes: 0, accent: 'neonStripe' },
+      { name: 'guppy', colors: ['#a0e26b', '#7fd56b', '#ff8fb1'], stripeColor: '#ffffff', body: { wMul: 0.9, hMul: 0.5 }, stripes: 0, accent: 'spots', tailStyle: 'flowy' },
+    ];
+    const fishCount = Math.max(5, Math.floor(state.w / 240));
     for (let i = 0; i < fishCount; i++) {
       const upper = Math.max(60, state.sandY - 60);
+      const sp = speciesDefs[i % speciesDefs.length];
+      const color = sp.colors[Math.floor(Math.random() * sp.colors.length)];
       state.fish.push({
         x: rand(40, state.w - 40),
         y: rand(60, upper),
         size: rand(14, 26),
         vx: rand(35, 85) * (Math.random() < 0.5 ? -1 : 1),
-        color: fishColors[i % fishColors.length],
+        color,
+        species: sp.name,
+        bodyW: sp.body.wMul,
+        bodyH: sp.body.hMul,
+        stripeCount: sp.stripes,
+        stripeColor: sp.stripeColor,
+        accent: sp.accent || null,
+        tailStyle: sp.tailStyle || 'fork',
         wagSeed: rand(0, Math.PI * 2),
         bobSeed: rand(0, Math.PI * 2),
+        finSeed: rand(0, Math.PI * 2),
       });
     }
     state.bubbles = [];
@@ -6035,26 +6054,200 @@ async function dockerAction(action, id) {
   function drawPlants(t) {
     const ctx = state.ctx;
     for (const p of state.plants) {
-      ctx.strokeStyle = `hsl(${p.hue}, 55%, 32%)`;
-      ctx.lineCap = 'round';
-      ctx.lineWidth = p.thickness;
+      if (p.type === 'fan') drawFanCoral(ctx, p, t);
+      else if (p.type === 'grass') drawGrass(ctx, p, t);
+      else drawKelp(ctx, p, t);
+    }
+  }
+
+  function plantStalkPoints(p, t, segments) {
+    const baseY = state.sandY + 4;
+    const pts = [];
+    for (let i = 0; i <= segments; i++) {
+      const k = i / segments;
+      const sway = Math.sin(t * 0.0012 + p.seed + k * 2.3) * 14 * k;
+      pts.push({ x: p.x + sway, y: baseY - p.h * k });
+    }
+    return pts;
+  }
+
+  function smoothStroke(ctx, pts) {
+    if (pts.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const xc = (pts[i].x + pts[i + 1].x) / 2;
+      const yc = (pts[i].y + pts[i + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+    }
+    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    ctx.stroke();
+  }
+
+  function drawKelp(ctx, p, t) {
+    const baseY = state.sandY + 4;
+    const pts = plantStalkPoints(p, t, 16);
+    // base shadow at root
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, baseY + 1, p.thickness * 2.4, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // stalk with gradient + smooth curve
+    const grad = ctx.createLinearGradient(p.x, baseY, p.x, baseY - p.h);
+    grad.addColorStop(0, `hsl(${p.hue}, 60%, 18%)`);
+    grad.addColorStop(0.5, `hsl(${p.hue}, 55%, 30%)`);
+    grad.addColorStop(1, `hsl(${p.hue + 8}, 65%, 44%)`);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = p.thickness;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    smoothStroke(ctx, pts);
+    // inner highlight stroke
+    ctx.strokeStyle = `hsla(${p.hue + 10}, 70%, 60%, 0.35)`;
+    ctx.lineWidth = Math.max(0.6, p.thickness * 0.35);
+    smoothStroke(ctx, pts);
+    // leaves alternating along stalk
+    for (let i = 2; i < pts.length - 1; i += 2) {
+      const side = (i % 4 === 0) ? 1 : -1;
+      const pt = pts[i];
+      const nxt = pts[i + 1];
+      const tang = Math.atan2(nxt.y - pt.y, nxt.x - pt.x);
+      const leafLen = 11 + (i / pts.length) * 6;
+      const leafW = 3 + (i / pts.length) * 1.5;
+      ctx.save();
+      ctx.translate(pt.x, pt.y);
+      ctx.rotate(tang + side * 1.0);
+      const lg = ctx.createLinearGradient(0, -leafW, 0, leafW);
+      lg.addColorStop(0, `hsl(${p.hue + 12}, 65%, 48%)`);
+      lg.addColorStop(1, `hsl(${p.hue}, 55%, 26%)`);
+      ctx.fillStyle = lg;
+      ctx.strokeStyle = `hsl(${p.hue}, 65%, 18%)`;
+      ctx.lineWidth = 0.6;
       ctx.beginPath();
-      const segments = 8;
-      let prevX = p.x, prevY = state.sandY + 4;
-      ctx.moveTo(prevX, prevY);
-      for (let i = 1; i <= segments; i++) {
-        const k = i / segments;
-        const sway = Math.sin(t * 0.0015 + p.seed + k * 1.8) * 10 * k;
-        const x = p.x + sway;
-        const y = (state.sandY + 4) - p.h * k;
-        ctx.lineTo(x, y);
-        prevX = x; prevY = y;
-      }
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(leafLen * 0.3, -leafW, leafLen * 0.8, -leafW * 0.6, leafLen, 0);
+      ctx.bezierCurveTo(leafLen * 0.8, leafW * 0.6, leafLen * 0.3, leafW, 0, 0);
+      ctx.closePath();
+      ctx.fill();
       ctx.stroke();
-      // a leaf at tip
-      ctx.fillStyle = `hsl(${p.hue}, 60%, 38%)`;
+      // central vein
+      ctx.strokeStyle = `hsla(${p.hue}, 70%, 15%, 0.6)`;
+      ctx.lineWidth = 0.5;
       ctx.beginPath();
-      ctx.ellipse(prevX, prevY, 7, 4, Math.sin(t * 0.001 + p.seed), 0, Math.PI * 2);
+      ctx.moveTo(1, 0);
+      ctx.lineTo(leafLen - 1, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // tip frond
+    const tip = pts[pts.length - 1];
+    ctx.fillStyle = `hsl(${p.hue + 15}, 70%, 55%)`;
+    ctx.beginPath();
+    ctx.ellipse(tip.x, tip.y, 4, 2.2, Math.sin(t * 0.001 + p.seed), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawGrass(ctx, p, t) {
+    const baseY = state.sandY + 4;
+    const blades = p.bladeCount;
+    // base tuft shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, baseY + 1, blades * 3.2, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (let b = 0; b < blades; b++) {
+      const offset = (b - (blades - 1) / 2) * 4.5;
+      const heightMul = 0.55 + ((b * 13) % 7) / 10 + 0.25 * Math.sin(b + p.seed);
+      const h = p.h * Math.max(0.4, heightMul);
+      const sway = Math.sin(t * 0.0016 + p.seed + b * 0.55) * 7;
+      const tipX = p.x + offset + sway;
+      const tipY = baseY - h;
+      const grad = ctx.createLinearGradient(p.x + offset, baseY, tipX, tipY);
+      grad.addColorStop(0, `hsl(${p.hue - 10 + b * 3}, 55%, 22%)`);
+      grad.addColorStop(1, `hsl(${p.hue + 5 + b * 3}, 65%, 50%)`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.8 + (b % 2) * 0.4;
+      ctx.lineCap = 'round';
+      // tapered blade — draw as filled curved sliver for a real grass look
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(p.x + offset - 1.2, baseY);
+      ctx.quadraticCurveTo(p.x + offset + sway * 0.4, baseY - h * 0.55, tipX, tipY);
+      ctx.quadraticCurveTo(p.x + offset + sway * 0.5 + 0.6, baseY - h * 0.55, p.x + offset + 1.2, baseY);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawFanCoral(ctx, p, t) {
+    const baseY = state.sandY + 4;
+    // base
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, baseY + 1, p.thickness * 3, 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const sway = Math.sin(t * 0.0009 + p.seed) * 5;
+    const trunkH = p.h * 0.35;
+    const trunkPts = [
+      { x: p.x, y: baseY },
+      { x: p.x + sway * 0.3, y: baseY - trunkH * 0.5 },
+      { x: p.x + sway, y: baseY - trunkH },
+    ];
+    const baseHue = p.hue + 20;
+    const stalkColor = `hsl(${baseHue}, 55%, 28%)`;
+    const tipColor = `hsl(${baseHue + 25}, 70%, 55%)`;
+    // trunk
+    ctx.strokeStyle = stalkColor;
+    ctx.lineWidth = p.thickness + 1;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    smoothStroke(ctx, trunkPts);
+    // 6 curving branches in a fan shape
+    const sx = p.x + sway;
+    const sy = baseY - trunkH;
+    const branches = 6;
+    for (let i = 0; i < branches; i++) {
+      const t2 = i / (branches - 1);
+      const angle = (-0.9 + t2 * 1.8) + Math.sin(t * 0.0014 + p.seed + i) * 0.06;
+      const len = p.h * (0.55 + (0.4 * Math.sin(i + p.seed)));
+      const bx = sx + Math.sin(angle) * len;
+      const by = sy - Math.cos(angle) * len;
+      const cx1 = sx + Math.sin(angle * 0.5) * len * 0.4;
+      const cy1 = sy - Math.cos(angle * 0.5) * len * 0.5;
+      const branchGrad = ctx.createLinearGradient(sx, sy, bx, by);
+      branchGrad.addColorStop(0, stalkColor);
+      branchGrad.addColorStop(1, tipColor);
+      ctx.strokeStyle = branchGrad;
+      ctx.lineWidth = p.thickness * 0.9;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(cx1, cy1, bx, by);
+      ctx.stroke();
+      // sub-branchlets
+      const subs = 3;
+      for (let s = 1; s <= subs; s++) {
+        const sk = s / (subs + 1);
+        const px = sx + (bx - sx) * sk + (cx1 - sx) * (sk * (1 - sk)) * 0.6;
+        const py = sy + (by - sy) * sk + (cy1 - sy) * (sk * (1 - sk)) * 0.6;
+        const subLen = 6 + (1 - sk) * 6;
+        const subAng = angle + (s % 2 === 0 ? 0.5 : -0.5);
+        const ex = px + Math.sin(subAng) * subLen;
+        const ey = py - Math.cos(subAng) * subLen;
+        ctx.strokeStyle = `hsl(${baseHue + 15}, 65%, ${42 + s * 4}%)`;
+        ctx.lineWidth = Math.max(0.8, p.thickness * 0.5);
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.quadraticCurveTo((px + ex) / 2, (py + ey) / 2 - 1, ex, ey);
+        ctx.stroke();
+      }
+      // polyp at tip
+      ctx.fillStyle = tipColor;
+      ctx.beginPath();
+      ctx.arc(bx, by, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `hsla(${baseHue + 35}, 80%, 75%, 0.7)`;
+      ctx.beginPath();
+      ctx.arc(bx - 0.6, by - 0.6, 0.9, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -6085,50 +6278,294 @@ async function dockerAction(action, id) {
 
   function drawFish(f, t) {
     const ctx = state.ctx;
+    const s = f.size;
+    const W = s * (f.bodyW || 1);
+    const H = s * (f.bodyH || 0.55);
+    const base = toRgb(f.color);
+    const light = shade(base, 28);
+    const bright = shade(base, 50);
+    const dark = shade(base, -18);
+    const darker = shade(base, -40);
+    const belly = shade(base, 38);
+
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(t * 0.002 + f.bobSeed) * 3);
     ctx.scale(Math.sign(f.vx) || 1, 1);
-    // tail
-    const wag = Math.sin(t * 0.012 + f.wagSeed) * 0.5;
-    ctx.fillStyle = shade(toRgb(f.color), -20);
-    ctx.beginPath();
-    ctx.moveTo(-f.size, 0);
-    ctx.lineTo(-f.size - f.size * 0.7, -f.size * 0.45 + wag * f.size * 0.3);
-    ctx.lineTo(-f.size - f.size * 0.7, f.size * 0.45 + wag * f.size * 0.3);
-    ctx.closePath();
-    ctx.fill();
-    // body
-    const bodyGrad = ctx.createLinearGradient(0, -f.size * 0.5, 0, f.size * 0.5);
-    bodyGrad.addColorStop(0, shade(toRgb(f.color), 25));
-    bodyGrad.addColorStop(1, shade(toRgb(f.color), -10));
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const wag = Math.sin(t * 0.012 + f.wagSeed);
+    const finFlap = Math.sin(t * 0.008 + f.finSeed);
+
+    // ===== Tail (drawn first, behind body) =====
+    drawFishTail(ctx, f, W, H, wag, dark, darker, base, light);
+
+    // ===== Dorsal (top) fin — drawn behind body so it tucks in =====
+    drawFishDorsal(ctx, W, H, finFlap, dark, darker, light);
+
+    // ===== Body — smooth teardrop with belly highlight =====
+    const bodyGrad = ctx.createLinearGradient(0, -H, 0, H);
+    bodyGrad.addColorStop(0, bright);
+    bodyGrad.addColorStop(0.45, base);
+    bodyGrad.addColorStop(0.85, belly);
+    bodyGrad.addColorStop(1, light);
     ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.ellipse(0, 0, f.size, f.size * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // top fin
-    ctx.fillStyle = shade(toRgb(f.color), -15);
-    ctx.beginPath();
-    ctx.moveTo(-f.size * 0.2, -f.size * 0.4);
-    ctx.lineTo(0, -f.size * 0.9);
-    ctx.lineTo(f.size * 0.3, -f.size * 0.4);
+    // snout
+    ctx.moveTo(W * 0.95, -H * 0.08);
+    // top curve to tail peduncle
+    ctx.bezierCurveTo(W * 0.6, -H * 1.05, -W * 0.5, -H * 0.9, -W * 0.95, -H * 0.18);
+    // tail peduncle pinch
+    ctx.bezierCurveTo(-W * 1.05, -H * 0.05, -W * 1.05, H * 0.05, -W * 0.95, H * 0.18);
+    // belly back to snout
+    ctx.bezierCurveTo(-W * 0.5, H * 1.0, W * 0.6, H * 1.05, W * 0.95, H * 0.12);
+    // mouth tip rounding
+    ctx.bezierCurveTo(W * 1.02, H * 0.05, W * 1.02, -H * 0.05, W * 0.95, -H * 0.08);
     ctx.closePath();
     ctx.fill();
-    // belly fin
+    ctx.stroke();
+
+    // ===== Stripes / accents =====
+    if (f.stripeCount > 0) {
+      ctx.save();
+      ctx.beginPath();
+      // re-trace body as clip
+      ctx.moveTo(W * 0.95, -H * 0.08);
+      ctx.bezierCurveTo(W * 0.6, -H * 1.05, -W * 0.5, -H * 0.9, -W * 0.95, -H * 0.18);
+      ctx.bezierCurveTo(-W * 1.05, -H * 0.05, -W * 1.05, H * 0.05, -W * 0.95, H * 0.18);
+      ctx.bezierCurveTo(-W * 0.5, H * 1.0, W * 0.6, H * 1.05, W * 0.95, H * 0.12);
+      ctx.bezierCurveTo(W * 1.02, H * 0.05, W * 1.02, -H * 0.05, W * 0.95, -H * 0.08);
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = f.stripeColor;
+      for (let i = 0; i < f.stripeCount; i++) {
+        const cx = W * (0.55 - i * 0.45);
+        const sw = W * 0.14;
+        ctx.beginPath();
+        ctx.moveTo(cx + sw, -H * 1.1);
+        ctx.bezierCurveTo(cx + sw * 0.6, 0, cx + sw * 0.6, 0, cx + sw, H * 1.1);
+        ctx.lineTo(cx - sw, H * 1.1);
+        ctx.bezierCurveTo(cx - sw * 0.6, 0, cx - sw * 0.6, 0, cx - sw, -H * 1.1);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    if (f.accent === 'tangPatch') {
+      // a curved yellow patch along the back
+      ctx.save();
+      ctx.fillStyle = f.stripeColor;
+      ctx.beginPath();
+      ctx.moveTo(-W * 0.55, -H * 0.55);
+      ctx.bezierCurveTo(-W * 0.2, -H * 0.95, W * 0.45, -H * 0.95, W * 0.65, -H * 0.4);
+      ctx.bezierCurveTo(W * 0.3, -H * 0.55, -W * 0.15, -H * 0.65, -W * 0.55, -H * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else if (f.accent === 'neonStripe') {
+      // a glowing horizontal stripe through the middle
+      ctx.save();
+      const gg = ctx.createLinearGradient(0, -2, 0, 2);
+      gg.addColorStop(0, 'rgba(0,0,0,0)');
+      gg.addColorStop(0.5, f.stripeColor);
+      gg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath();
+      ctx.moveTo(W * 0.7, -H * 0.05);
+      ctx.bezierCurveTo(W * 0.3, -H * 0.18, -W * 0.5, -H * 0.18, -W * 0.85, -H * 0.05);
+      ctx.bezierCurveTo(-W * 0.5, H * 0.18, W * 0.3, H * 0.18, W * 0.7, H * 0.05);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else if (f.accent === 'spots') {
+      ctx.fillStyle = f.stripeColor;
+      for (let i = 0; i < 5; i++) {
+        const sx = -W * 0.5 + i * (W * 0.25);
+        const sy = (i % 2 ? -1 : 1) * H * 0.25;
+        ctx.beginPath();
+        ctx.arc(sx, sy, s * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // ===== Pectoral fin (side, animated flap) =====
+    ctx.save();
+    ctx.translate(W * 0.25, H * 0.15);
+    ctx.rotate(0.35 + finFlap * 0.18);
+    const pectGrad = ctx.createLinearGradient(0, 0, -s * 0.4, s * 0.5);
+    pectGrad.addColorStop(0, light);
+    pectGrad.addColorStop(1, dark);
+    ctx.fillStyle = pectGrad;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(-f.size * 0.1, f.size * 0.4);
-    ctx.lineTo(f.size * 0.1, f.size * 0.7);
-    ctx.lineTo(f.size * 0.3, f.size * 0.4);
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(-s * 0.15, s * 0.25, -s * 0.4, s * 0.4, -s * 0.45, s * 0.55);
+    ctx.bezierCurveTo(-s * 0.25, s * 0.5, -s * 0.05, s * 0.35, 0, s * 0.15);
     ctx.closePath();
     ctx.fill();
-    // eye
+    ctx.stroke();
+    // fin rays
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.05 + i * s * 0.04);
+      ctx.bezierCurveTo(-s * 0.1, s * 0.18 + i * 0.03, -s * 0.25, s * 0.32 + i * 0.03, -s * 0.4, s * 0.45);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ===== Anal / belly fin (small, near rear belly) =====
+    ctx.save();
+    ctx.fillStyle = dark;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(-W * 0.45, H * 0.65);
+    ctx.bezierCurveTo(-W * 0.5, H * 1.05, -W * 0.2, H * 1.1, -W * 0.1, H * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // ===== Gill mark =====
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.42, -H * 0.4);
+    ctx.bezierCurveTo(W * 0.36, -H * 0.05, W * 0.36, H * 0.05, W * 0.42, H * 0.4);
+    ctx.stroke();
+
+    // ===== Mouth (small curve) =====
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.92, H * 0.05);
+    ctx.quadraticCurveTo(W * 0.84, H * 0.18, W * 0.74, H * 0.12);
+    ctx.stroke();
+
+    // ===== Eye =====
+    const eyeX = W * 0.62;
+    const eyeY = -H * 0.18;
+    const eyeR = Math.max(2, s * 0.18);
+    // socket halo
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, eyeR + 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    // white
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(f.size * 0.55, -f.size * 0.12, f.size * 0.16, 0, Math.PI * 2);
+    ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#0a0a0a';
+    // iris
+    ctx.fillStyle = '#1a232f';
     ctx.beginPath();
-    ctx.arc(f.size * 0.6, -f.size * 0.12, f.size * 0.08, 0, Math.PI * 2);
+    ctx.arc(eyeX + eyeR * 0.18, eyeY, eyeR * 0.7, 0, Math.PI * 2);
     ctx.fill();
+    // pupil
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(eyeX + eyeR * 0.25, eyeY, eyeR * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    // shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(eyeX + eyeR * 0.45, eyeY - eyeR * 0.4, eyeR * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(eyeX - eyeR * 0.3, eyeY + eyeR * 0.35, eyeR * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawFishTail(ctx, f, W, H, wag, dark, darker, base, light) {
+    ctx.save();
+    // tail peduncle anchor + small wag rotation for fluid motion
+    ctx.translate(-W * 0.95, 0);
+    ctx.rotate(wag * 0.25);
+    const grad = ctx.createLinearGradient(0, -H, 0, H);
+    grad.addColorStop(0, dark);
+    grad.addColorStop(0.5, base);
+    grad.addColorStop(1, dark);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 0.9;
+    if (f.tailStyle === 'flowy') {
+      // long flowing fan tail
+      ctx.beginPath();
+      ctx.moveTo(0, -H * 0.2);
+      ctx.bezierCurveTo(-W * 0.8, -H * 1.4, -W * 1.2, -H * 1.2, -W * 1.3, -H * 0.2);
+      ctx.bezierCurveTo(-W * 1.4, 0, -W * 1.4, 0, -W * 1.3, H * 0.2);
+      ctx.bezierCurveTo(-W * 1.2, H * 1.2, -W * 0.8, H * 1.4, 0, H * 0.2);
+      ctx.bezierCurveTo(-W * 0.2, 0, -W * 0.2, 0, 0, -H * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      // forked tail
+      ctx.beginPath();
+      ctx.moveTo(0, -H * 0.15);
+      ctx.bezierCurveTo(-W * 0.4, -H * 0.6, -W * 0.7, -H * 1.0, -W * 0.85, -H * 0.95);
+      ctx.bezierCurveTo(-W * 0.55, -H * 0.4, -W * 0.4, -H * 0.15, -W * 0.3, 0);
+      ctx.bezierCurveTo(-W * 0.4, H * 0.15, -W * 0.55, H * 0.4, -W * 0.85, H * 0.95);
+      ctx.bezierCurveTo(-W * 0.7, H * 1.0, -W * 0.4, H * 0.6, 0, H * 0.15);
+      ctx.bezierCurveTo(-W * 0.05, 0, -W * 0.05, 0, 0, -H * 0.15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    // ribs / rays along the tail for detail
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.6;
+    for (let i = 0; i < 4; i++) {
+      const yy = (i - 1.5) * H * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(0, yy * 0.4);
+      ctx.lineTo(-W * 0.8, yy);
+      ctx.stroke();
+    }
+    // highlight along upper edge
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-W * 0.05, -H * 0.18);
+    ctx.bezierCurveTo(-W * 0.35, -H * 0.5, -W * 0.6, -H * 0.85, -W * 0.78, -H * 0.85);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFishDorsal(ctx, W, H, finFlap, dark, darker, light) {
+    ctx.save();
+    const grad = ctx.createLinearGradient(0, -H * 1.4, 0, -H * 0.3);
+    grad.addColorStop(0, light);
+    grad.addColorStop(1, dark);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    // ride along the back from front-third to tail peduncle
+    ctx.moveTo(W * 0.45, -H * 0.55);
+    ctx.bezierCurveTo(W * 0.3, -H * 1.25 + finFlap * 1.2, W * 0.0, -H * 1.2, -W * 0.25, -H * 1.0 + finFlap * 0.6);
+    ctx.bezierCurveTo(-W * 0.45, -H * 0.85, -W * 0.7, -H * 0.7, -W * 0.85, -H * 0.4);
+    ctx.bezierCurveTo(-W * 0.5, -H * 0.55, 0, -H * 0.55, W * 0.45, -H * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // rays inside the dorsal
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 6; i++) {
+      const xx = W * 0.35 - i * W * 0.22;
+      ctx.beginPath();
+      ctx.moveTo(xx, -H * 0.55);
+      ctx.lineTo(xx + W * 0.02, -H * (0.85 + 0.15 * Math.sin(i)) + finFlap * 0.8);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -6144,210 +6581,510 @@ async function dockerAction(action, id) {
   function drawLobster(t) {
     const ctx = state.ctx;
     const L = state.lobster;
-    const color = cpuToColor(state.cpu);
-    const dark = shade(color, -30);
-    const darker = shade(color, -55);
-    const light = shade(color, 25);
+    const c = cpuToColor(state.cpu);
+    const cDark = shade(c, -30);
+    const cDarker = shade(c, -55);
+    const cLight = shade(c, 28);
+    const cBright = shade(c, 55);
 
     ctx.save();
-    // bob a little to simulate scuttling
     const bob = Math.sin(t * 0.018) * 1.5;
     ctx.translate(L.x, L.y + bob);
     ctx.scale(L.facing, 1);
-
-    // soft shadow on sand
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.ellipse(-2, 18, 56, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ----- Tail segments (back/left when facing right) -----
-    const tailWiggle = Math.sin(t * 0.02) * 0.08;
-    for (let i = 3; i >= 0; i--) {
-      ctx.save();
-      ctx.rotate(tailWiggle * (i + 1) * 0.5);
-      ctx.fillStyle = i % 2 === 0 ? color : dark;
-      ctx.strokeStyle = darker;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(-26 - i * 9, -6 - i * 0.6, 14, 11, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-    // tail fan
-    ctx.fillStyle = dark;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(-58, -6);
-    ctx.lineTo(-78, -20);
-    ctx.lineTo(-86, -8);
-    ctx.lineTo(-86, 6);
-    ctx.lineTo(-78, 16);
-    ctx.lineTo(-58, 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // ----- Walking legs (3 pairs) under body -----
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 2.2;
     ctx.lineCap = 'round';
-    for (let i = 0; i < 4; i++) {
-      const phase = t * 0.02 + i * 1.1;
-      const lift = Math.max(0, Math.sin(phase)) * 4;
-      const lx = -14 + i * 9;
-      ctx.beginPath();
-      ctx.moveTo(lx, 4);
-      ctx.lineTo(lx - 4, 14 - lift);
-      ctx.lineTo(lx + 2, 22 - lift);
-      ctx.stroke();
-    }
+    ctx.lineJoin = 'round';
 
-    // ----- Main body (carapace) -----
-    const bodyGrad = ctx.createLinearGradient(0, -22, 0, 8);
-    bodyGrad.addColorStop(0, light);
-    bodyGrad.addColorStop(1, color);
-    ctx.fillStyle = bodyGrad;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 1.4;
+    // ----- ground shadow -----
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath();
-    ctx.ellipse(0, -10, 30, 18, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // segment line
-    ctx.strokeStyle = dark;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(-18, -2); ctx.quadraticCurveTo(0, 4, 18, -2);
-    ctx.stroke();
-
-    // ----- Head/rostrum -----
-    ctx.fillStyle = bodyGrad;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.ellipse(22, -13, 14, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // rostrum spike
-    ctx.fillStyle = dark;
-    ctx.beginPath();
-    ctx.moveTo(34, -22);
-    ctx.lineTo(40, -18);
-    ctx.lineTo(34, -14);
-    ctx.closePath();
+    ctx.ellipse(-6, 22, 66, 5.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // ----- Eye (cute) -----
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(28, -17, 3.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.arc(29, -17, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(29.5, -17.7, 0.6, 0, Math.PI * 2);
-    ctx.fill();
+    // ----- antennae (behind body) -----
+    drawAntennae(ctx, t, cDarker, cDark);
 
-    // tiny smile
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(30, -9, 3, 0.1, Math.PI - 0.1);
-    ctx.stroke();
+    // ----- tail (behind body, drawn back-to-front) -----
+    drawTail(ctx, t, c, cDark, cDarker, cLight);
 
-    // ----- Antennae -----
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 1.2;
-    const antSway = Math.sin(t * 0.004) * 4;
-    ctx.beginPath();
-    ctx.moveTo(32, -22);
-    ctx.quadraticCurveTo(50, -42 + antSway, 70, -46 + antSway);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(30, -23);
-    ctx.quadraticCurveTo(46, -38 - antSway, 60, -50 - antSway);
-    ctx.stroke();
+    // ----- walking legs (under body) -----
+    drawLegs(ctx, t, cDark, cDarker);
 
-    // ----- Claws (two big ones) -----
-    drawClaw(ctx, 30, -4, 0.15, color, dark, darker, light, t, 0);
-    drawClaw(ctx, 32, 2, 0.25, color, dark, darker, light, t, 0.8);
+    // ----- carapace + head -----
+    drawCarapace(ctx, t, c, cDark, cDarker, cLight, cBright);
+    drawHead(ctx, t, c, cDark, cDarker, cLight, cBright);
+
+    // ----- claws (in front of body) -----
+    drawClaw(ctx, 28, -2, 0.18, c, cDark, cDarker, cLight, cBright, t, 0);
+    drawClaw(ctx, 30, 8, 0.42, c, cDark, cDarker, cLight, cBright, t, 0.9);
 
     ctx.restore();
   }
 
-  function drawClaw(ctx, x0, y0, baseAngle, color, dark, darker, light, t, phase) {
-    const clack = Math.sin(t * 0.006 + phase) * 0.15;
+  function drawTail(ctx, t, c, cDark, cDarker, cLight) {
+    const wiggle = Math.sin(t * 0.005) * 0.05;
     ctx.save();
-    ctx.translate(x0, y0);
-    ctx.rotate(baseAngle);
-    // upper arm
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(14, 6);
-    ctx.stroke();
-    ctx.strokeStyle = dark;
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(14, 6);
-    ctx.stroke();
-    // forearm
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(14, 6);
-    ctx.lineTo(28, 12);
-    ctx.stroke();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(14, 6);
-    ctx.lineTo(28, 12);
-    ctx.stroke();
-    // claw (pincer) — big rounded shape with two fingers
-    ctx.translate(34, 12);
-    ctx.rotate(0.1);
-    const grad = ctx.createLinearGradient(-12, -10, 12, 12);
-    grad.addColorStop(0, light);
-    grad.addColorStop(1, color);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 13, 9, 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // upper finger
+    ctx.rotate(wiggle);
+
+    // segments: from the rear-most outward back toward the body
+    const segs = [
+      { cx: -68, w: 11, h: 12.5 },
+      { cx: -58, w: 12.5, h: 13.5 },
+      { cx: -47, w: 13.5, h: 14.5 },
+      { cx: -35, w: 14.5, h: 15.5 },
+      { cx: -22, w: 16, h: 17 },
+    ];
+
+    // tail fan first (behind everything)
+    drawTailFan(ctx, -82, 0, c, cDark, cDarker, cLight);
+
+    for (let i = 0; i < segs.length; i++) {
+      const s = segs[i];
+      const grad = ctx.createLinearGradient(s.cx, -s.h, s.cx, s.h);
+      grad.addColorStop(0, cLight);
+      grad.addColorStop(0.45, c);
+      grad.addColorStop(1, cDark);
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = cDarker;
+      ctx.lineWidth = 1.2;
+      // rounded shell ring — like a flat C cross-section
+      ctx.beginPath();
+      ctx.moveTo(s.cx - s.w * 0.55, -s.h * 0.78);
+      ctx.bezierCurveTo(s.cx - s.w * 0.2, -s.h * 1.05, s.cx + s.w * 0.45, -s.h * 1.05, s.cx + s.w * 0.55, -s.h * 0.78);
+      ctx.bezierCurveTo(s.cx + s.w * 0.78, -s.h * 0.2, s.cx + s.w * 0.78, s.h * 0.2, s.cx + s.w * 0.55, s.h * 0.78);
+      ctx.bezierCurveTo(s.cx + s.w * 0.45, s.h * 1.05, s.cx - s.w * 0.2, s.h * 1.05, s.cx - s.w * 0.55, s.h * 0.78);
+      ctx.bezierCurveTo(s.cx - s.w * 0.78, s.h * 0.2, s.cx - s.w * 0.78, -s.h * 0.2, s.cx - s.w * 0.55, -s.h * 0.78);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // top highlight ridge
+      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(s.cx - s.w * 0.35, -s.h * 0.55);
+      ctx.quadraticCurveTo(s.cx + s.w * 0.1, -s.h * 0.78, s.cx + s.w * 0.35, -s.h * 0.55);
+      ctx.stroke();
+      // swimmeret pair (small paddles below segment), skip the last (near body)
+      if (i < segs.length - 1) {
+        drawSwimmeret(ctx, s.cx, s.h * 0.82, t, i, c, cDark, cDarker);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawSwimmeret(ctx, x, y, t, i, c, cDark, cDarker) {
+    const flick = Math.sin(t * 0.012 + i * 0.7) * 0.25;
     ctx.save();
-    ctx.rotate(-0.2 - clack);
+    ctx.translate(x, y);
+    ctx.rotate(0.2 + flick);
+    ctx.fillStyle = cDark;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(8, -4);
-    ctx.lineTo(22, -10);
-    ctx.lineTo(20, -2);
-    ctx.closePath();
+    ctx.ellipse(0, 4, 3, 6, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
-    // lower finger
-    ctx.save();
-    ctx.rotate(0.25 + clack);
+  }
+
+  function drawTailFan(ctx, x, y, c, cDark, cDarker, cLight) {
+    // 5 flukes spread fanwise off the back of the tail
+    const flukes = [
+      { angle: -0.65, len: 22, w: 7 },
+      { angle: -0.32, len: 26, w: 8 },
+      { angle: 0,     len: 28, w: 9 },
+      { angle: 0.32,  len: 26, w: 8 },
+      { angle: 0.65,  len: 22, w: 7 },
+    ];
+    for (const f of flukes) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(f.angle);
+      const grad = ctx.createLinearGradient(0, -f.w, 0, f.w);
+      grad.addColorStop(0, cLight);
+      grad.addColorStop(0.5, c);
+      grad.addColorStop(1, cDark);
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = cDarker;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(2, -f.w * 0.5);
+      ctx.bezierCurveTo(-f.len * 0.4, -f.w * 1.05, -f.len * 0.9, -f.w * 0.4, -f.len, 0);
+      ctx.bezierCurveTo(-f.len * 0.9, f.w * 0.4, -f.len * 0.4, f.w * 1.05, 2, f.w * 0.5);
+      ctx.bezierCurveTo(0, 0, 0, 0, 2, -f.w * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // ribs
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 0.7;
+      for (let r = 0; r < 3; r++) {
+        const off = (r - 1) * 1.6;
+        ctx.beginPath();
+        ctx.moveTo(0, off);
+        ctx.lineTo(-f.len * 0.85, off * 0.6);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawLegs(ctx, t, cDark, cDarker) {
+    // 4 pairs of walking legs (rear of the 5 decapod pairs; front pair is the claws)
+    for (let i = 0; i < 4; i++) {
+      const phase = t * 0.018 + i * 1.25;
+      const lift = Math.max(0, Math.sin(phase)) * 5;
+      const lx = -12 + i * 8.5;
+      // dark outer stroke
+      ctx.strokeStyle = cDarker;
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.moveTo(lx, 4);
+      ctx.bezierCurveTo(lx - 2, 10, lx - 5, 16 - lift, lx + 1, 22 - lift);
+      ctx.stroke();
+      // mid inner stroke for joints depth
+      ctx.strokeStyle = cDark;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(lx, 4);
+      ctx.bezierCurveTo(lx - 2, 10, lx - 5, 16 - lift, lx + 1, 22 - lift);
+      ctx.stroke();
+      // tiny foot dot
+      ctx.fillStyle = cDarker;
+      ctx.beginPath();
+      ctx.arc(lx + 1, 22 - lift, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawCarapace(ctx, t, c, cDark, cDarker, cLight, cBright) {
+    const grad = ctx.createRadialGradient(-6, -18, 3, 0, -8, 34);
+    grad.addColorStop(0, cBright);
+    grad.addColorStop(0.4, cLight);
+    grad.addColorStop(1, c);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(8, 4);
-    ctx.lineTo(22, 8);
-    ctx.lineTo(18, 0);
+    // carapace outline as a smooth bezier blob
+    ctx.moveTo(-22, -4);
+    ctx.bezierCurveTo(-30, -14, -22, -28, 0, -28);
+    ctx.bezierCurveTo(22, -28, 32, -16, 28, -4);
+    ctx.bezierCurveTo(28, 6, 18, 10, 0, 10);
+    ctx.bezierCurveTo(-18, 10, -22, 4, -22, -4);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    // segment ridges (three sweeping curves)
+    ctx.strokeStyle = cDark;
+    ctx.lineWidth = 1.1;
+    for (let i = 0; i < 3; i++) {
+      const offX = -14 + i * 12;
+      ctx.beginPath();
+      ctx.moveTo(offX - 1, -24 + i * 0.5);
+      ctx.bezierCurveTo(offX + 2, -14 + i, offX + 2, 0 + i, offX, 8 - i * 0.5);
+      ctx.stroke();
+    }
+    // top highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-18, -16);
+    ctx.bezierCurveTo(-8, -28, 10, -28, 22, -16);
+    ctx.stroke();
+    // speckles (carapace texture)
+    ctx.fillStyle = cDarker;
+    for (let i = 0; i < 6; i++) {
+      const sx = -14 + i * 5;
+      const sy = -14 + (i % 2) * 4;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawHead(ctx, t, c, cDark, cDarker, cLight, cBright) {
+    // head capsule
+    const grad = ctx.createRadialGradient(18, -18, 2, 22, -12, 18);
+    grad.addColorStop(0, cBright);
+    grad.addColorStop(0.5, cLight);
+    grad.addColorStop(1, c);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(8, -22);
+    ctx.bezierCurveTo(18, -28, 32, -24, 36, -14);
+    ctx.bezierCurveTo(38, -6, 32, 2, 22, 4);
+    ctx.bezierCurveTo(12, 4, 6, -2, 8, -22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // rostrum (forward horn with three small teeth)
+    ctx.fillStyle = cDark;
+    ctx.strokeStyle = cDarker;
+    ctx.beginPath();
+    ctx.moveTo(30, -22);
+    ctx.bezierCurveTo(40, -22, 44, -16, 38, -10);
+    ctx.lineTo(28, -14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // rostrum teeth
+    ctx.beginPath();
+    ctx.moveTo(33, -23); ctx.lineTo(34, -27); ctx.lineTo(35, -23);
+    ctx.moveTo(36, -22); ctx.lineTo(37, -25); ctx.lineTo(38, -22);
+    ctx.fill();
+    ctx.stroke();
+    // ----- eye on a little stalk -----
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(26, -16);
+    ctx.quadraticCurveTo(27, -22, 29, -23);
+    ctx.stroke();
+    // eye white
+    const eyeX = 29.5, eyeY = -23;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    // iris
+    const blink = (Math.sin(t * 0.001) > 0.985) ? 0.2 : 1;
+    ctx.fillStyle = '#1a1a26';
+    ctx.beginPath();
+    ctx.ellipse(eyeX + 0.8, eyeY, 2.6, 2.6 * blink, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // pupil
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(eyeX + 1.1, eyeY, 1.4, 1.4 * blink, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // eye shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(eyeX + 1.8, eyeY - 0.9, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(eyeX - 0.6, eyeY + 0.8, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // cute smile
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(30, -8, 3.5, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+    // blush
+    ctx.fillStyle = 'rgba(255, 140, 140, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(33, -11, 2.5, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawAntennae(ctx, t, cDarker, cDark) {
+    const sway = Math.sin(t * 0.003) * 5;
+    const sway2 = Math.cos(t * 0.0035) * 4;
+    ctx.lineCap = 'round';
+
+    // long antenna 1 — sweeping forward with a curl
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(32, -22);
+    ctx.bezierCurveTo(54, -32 + sway, 78, -22 + sway * 0.6, 102, -32 + sway * 0.4);
+    ctx.stroke();
+    ctx.strokeStyle = cDark;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(32, -22);
+    ctx.bezierCurveTo(54, -32 + sway, 78, -22 + sway * 0.6, 102, -32 + sway * 0.4);
+    ctx.stroke();
+
+    // long antenna 2 — upward sweep
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(30, -23);
+    ctx.bezierCurveTo(48, -38 + sway2, 64, -52 + sway2, 86, -58 + sway2 * 0.6);
+    ctx.stroke();
+
+    // shorter antennules (in front of head)
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(34, -18);
+    ctx.quadraticCurveTo(46, -22 + sway * 0.4, 56, -18 + sway * 0.3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(33, -19);
+    ctx.quadraticCurveTo(42, -26 - sway2 * 0.3, 50, -28 - sway2 * 0.4);
+    ctx.stroke();
+
+    // little segment ticks on the main antenna for detail
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 0.6;
+    for (let i = 1; i < 8; i++) {
+      const k = i / 8;
+      const x = 32 + (102 - 32) * k;
+      const y = -22 + (sway - 10) * Math.sin(k * Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(x, y - 1.6);
+      ctx.lineTo(x, y + 1.6);
+      ctx.stroke();
+    }
+  }
+
+  function drawClaw(ctx, x0, y0, baseAngle, c, cDark, cDarker, cLight, cBright, t, phase) {
+    const clack = Math.sin(t * 0.006 + phase) * 0.2;
+    ctx.save();
+    ctx.translate(x0, y0);
+    ctx.rotate(baseAngle);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // ----- merus (upper arm / shoulder bulb) -----
+    const merusGrad = ctx.createRadialGradient(3, 0, 1, 8, 3, 10);
+    merusGrad.addColorStop(0, cLight);
+    merusGrad.addColorStop(1, c);
+    ctx.fillStyle = merusGrad;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(8, 3, 8, 4.5, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // ----- carpus (forearm / wrist) -----
+    const carpusGrad = ctx.createLinearGradient(14, 0, 30, 14);
+    carpusGrad.addColorStop(0, cLight);
+    carpusGrad.addColorStop(1, c);
+    ctx.fillStyle = carpusGrad;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(22, 10, 13, 6.5, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // small spike on the wrist
+    ctx.fillStyle = cDarker;
+    ctx.beginPath();
+    ctx.moveTo(28, 4);
+    ctx.lineTo(31, 1);
+    ctx.lineTo(30, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // ----- knuckle joint -----
+    ctx.fillStyle = cDark;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(32, 14, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // ----- chela (the big pincer) -----
+    ctx.save();
+    ctx.translate(36, 14);
+    ctx.rotate(0.1);
+
+    const palmGrad = ctx.createRadialGradient(-4, -4, 2, 2, 2, 20);
+    palmGrad.addColorStop(0, cBright);
+    palmGrad.addColorStop(0.45, cLight);
+    palmGrad.addColorStop(1, c);
+
+    // palm (manus) — chunky teardrop with smooth bezier outline
+    ctx.fillStyle = palmGrad;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-9, -9);
+    ctx.bezierCurveTo(-2, -14, 14, -12, 18, -2);
+    ctx.bezierCurveTo(22, 8, 14, 14, 4, 14);
+    ctx.bezierCurveTo(-8, 14, -12, 6, -9, -9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // palm highlight sweep
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.bezierCurveTo(2, -11, 12, -10, 15, -3);
+    ctx.stroke();
+
+    // bumps on palm for texture
+    ctx.fillStyle = cDarker;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(-4 + i * 4, 4 + (i % 2) * 2, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ----- upper finger (dactyl, movable) -----
+    ctx.save();
+    ctx.translate(14, -5);
+    ctx.rotate(-0.35 - clack);
+    ctx.fillStyle = palmGrad;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(0, -4);
+    ctx.bezierCurveTo(8, -7, 18, -5, 24, -1);
+    ctx.bezierCurveTo(22, 2, 12, 3, 0, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // tip
+    ctx.fillStyle = cDarker;
+    ctx.beginPath();
+    ctx.moveTo(22, -1);
+    ctx.lineTo(26, 0);
+    ctx.lineTo(22, 2);
+    ctx.closePath();
+    ctx.fill();
+    // serration teeth on inside edge
+    ctx.fillStyle = cDarker;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(5 + i * 4, 2.5, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // ----- lower finger (propodus, fixed) -----
+    ctx.save();
+    ctx.translate(14, 6);
+    ctx.rotate(0.35 + clack);
+    ctx.fillStyle = palmGrad;
+    ctx.strokeStyle = cDarker;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(0, -2);
+    ctx.bezierCurveTo(8, -1, 18, 1, 22, 4);
+    ctx.bezierCurveTo(18, 7, 10, 7, 0, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // tip
+    ctx.fillStyle = cDarker;
+    ctx.beginPath();
+    ctx.moveTo(20, 3);
+    ctx.lineTo(24, 5);
+    ctx.lineTo(20, 6);
+    ctx.closePath();
+    ctx.fill();
+    // serration teeth on top edge (facing the other finger)
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(5 + i * 4, -0.6, 0.55, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
     ctx.restore();
     ctx.restore();
   }
