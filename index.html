@@ -1298,6 +1298,110 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
   transition: all 0.2s;
 }
 #themeToggle:hover { background: var(--bg-tertiary); transform: scale(1.05); }
+
+/* ===== Tank tab ===== */
+#tank {
+  margin: -32px;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+.tank-scene {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 40px);
+  background: linear-gradient(180deg,
+    #02132b 0%,
+    #05305b 25%,
+    #0a5e92 55%,
+    #1389b3 78%,
+    #1f9fbf 100%);
+  overflow: hidden;
+}
+#tankCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tank-hud {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 5;
+  min-width: 220px;
+  padding: 14px 16px;
+  background: rgba(8, 18, 35, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #f5f7fa;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.tank-hud-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+  color: #ffd9c2;
+}
+.tank-hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.tank-hud-label {
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+.tank-hud-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffe3b0;
+}
+.tank-hud-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  margin: 4px 0 8px;
+}
+.tank-hud-bar-fill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 0%;
+  background: linear-gradient(90deg, #8a8a8a, #d97757, #7a1010);
+  transition: width 0.4s ease;
+}
+.tank-hud-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+}
+.tank-hud-hint {
+  margin-top: 8px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+body.light-theme .tank-hud {
+  background: rgba(255, 255, 255, 0.7);
+  color: #15243d;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .tank-hud-title { color: #8a3014; }
+body.light-theme .tank-hud-value { color: #5a2a0a; }
+body.light-theme .tank-hud-label,
+body.light-theme .tank-hud-sub,
+body.light-theme .tank-hud-hint { color: rgba(0,0,0,0.55); }
 </style>
 </head>
 <body>
@@ -1424,6 +1528,10 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
       <div class="nav-item" data-page="docker">
         <span class="icon">🐳</span>
         <span class="nav-text">Docker</span>
+      </div>
+      <div class="nav-item" data-page="tank">
+        <span class="icon">🦞</span>
+        <span class="nav-text">Tank</span>
       </div>
     </nav>
     <div style="padding:16px;border-top:1px solid var(--border);margin-top:auto;">
@@ -2211,6 +2319,25 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
         <div class="card">
           <div class="card-title">📊 System</div>
           <pre id="dockerSystem" style="font-size:12px;max-height:300px;overflow-y:auto;white-space:pre-wrap;">Loading...</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="tank">
+      <div class="tank-scene">
+        <canvas id="tankCanvas"></canvas>
+        <div class="tank-hud">
+          <div class="tank-hud-title">🦞 OpenClaw Tank</div>
+          <div class="tank-hud-row">
+            <span class="tank-hud-label">CPU</span>
+            <span class="tank-hud-value" id="tankCpuValue">0.0%</span>
+          </div>
+          <div class="tank-hud-bar"><div class="tank-hud-bar-fill" id="tankCpuBar"></div></div>
+          <div class="tank-hud-row tank-hud-sub">
+            <span>user <span id="tankCpuUser">0.0</span></span>
+            <span>sys <span id="tankCpuSys">0.0</span></span>
+          </div>
+          <div class="tank-hud-hint">Lobster turns red as CPU rises</div>
         </div>
       </div>
     </div>
@@ -5693,6 +5820,673 @@ async function dockerAction(action, id) {
     loadDocker();
   } catch(e) { showToast('Error: ' + e.message, 'warning'); }
 }
+
+/* =========================================================================
+   Lobster Tank — CPU visualizer (mock data; will be replaced on integration)
+   ========================================================================= */
+(function tankModule() {
+  const state = {
+    canvas: null,
+    ctx: null,
+    dpr: 1,
+    w: 0,
+    h: 0,
+    sandY: 0,
+    running: false,
+    rafId: 0,
+    startTime: performance.now(),
+    cpu: 0,
+    cpuUser: 0,
+    cpuSys: 0,
+    lobster: null,
+    fish: [],
+    bubbles: [],
+    rocks: [],
+    plants: [],
+    sandDots: [],
+    mockId: null,
+  };
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function cpuToColor(pct) {
+    const t = clamp(pct, 0, 100) / 100;
+    // gray (130,130,135) -> dark red (122, 16, 16)
+    const r = Math.round(lerp(130, 138, t));
+    const g = Math.round(lerp(130, 18, t));
+    const b = Math.round(lerp(135, 18, t));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+  function shade(rgbStr, delta) {
+    const m = rgbStr.match(/\d+/g);
+    if (!m) return rgbStr;
+    const r = clamp(parseInt(m[0]) + delta, 0, 255);
+    const g = clamp(parseInt(m[1]) + delta, 0, 255);
+    const b = clamp(parseInt(m[2]) + delta, 0, 255);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function resize() {
+    const scene = state.canvas.parentElement;
+    if (!scene) return;
+    state.dpr = window.devicePixelRatio || 1;
+    state.w = scene.clientWidth;
+    state.h = scene.clientHeight;
+    state.canvas.width = Math.floor(state.w * state.dpr);
+    state.canvas.height = Math.floor(state.h * state.dpr);
+    state.canvas.style.width = state.w + 'px';
+    state.canvas.style.height = state.h + 'px';
+    state.ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    state.sandY = Math.round(state.h * (2 / 3));
+    if (state.lobster) {
+      state.lobster.y = state.sandY + 4;
+      state.lobster.x = clamp(state.lobster.x, 80, state.w - 80);
+    }
+    placeStaticDecor();
+  }
+
+  function placeStaticDecor() {
+    state.rocks = [];
+    state.plants = [];
+    state.sandDots = [];
+    const rng = mulberry32(7);
+
+    const rockCount = Math.max(3, Math.floor(state.w / 280));
+    for (let i = 0; i < rockCount; i++) {
+      state.rocks.push({
+        x: (i + 0.5) * (state.w / rockCount) + rng() * 60 - 30,
+        rx: rng() * 24 + 22,
+        ry: rng() * 10 + 12,
+        shade: rng() * 30 - 15,
+      });
+    }
+    const plantCount = Math.max(4, Math.floor(state.w / 180));
+    for (let i = 0; i < plantCount; i++) {
+      state.plants.push({
+        x: (i + 0.5) * (state.w / plantCount) + rng() * 80 - 40,
+        h: rng() * 90 + 70,
+        seed: rng() * Math.PI * 2,
+        hue: 110 + rng() * 40,
+        thickness: 3 + rng() * 2,
+      });
+    }
+    const sandCount = Math.floor(state.w / 6);
+    for (let i = 0; i < sandCount; i++) {
+      state.sandDots.push({
+        x: rng() * state.w,
+        y: state.sandY + rng() * (state.h - state.sandY),
+        r: rng() * 1.2 + 0.3,
+        a: rng() * 0.35 + 0.05,
+      });
+    }
+  }
+
+  function mulberry32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s |= 0; s = s + 0x6D2B79F5 | 0;
+      let t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function initEntities() {
+    state.lobster = {
+      x: state.w * 0.4,
+      y: state.sandY + 4,
+      vx: 60, // px/sec
+      facing: 1,
+      bob: 0,
+    };
+    state.fish = [];
+    const fishColors = ['#f5b342', '#ef6c4d', '#6dd3ff', '#a0e26b', '#ff8fb1'];
+    const fishCount = Math.max(4, Math.floor(state.w / 280));
+    for (let i = 0; i < fishCount; i++) {
+      const upper = Math.max(60, state.sandY - 60);
+      state.fish.push({
+        x: rand(40, state.w - 40),
+        y: rand(60, upper),
+        size: rand(14, 26),
+        vx: rand(35, 85) * (Math.random() < 0.5 ? -1 : 1),
+        color: fishColors[i % fishColors.length],
+        wagSeed: rand(0, Math.PI * 2),
+        bobSeed: rand(0, Math.PI * 2),
+      });
+    }
+    state.bubbles = [];
+    for (let i = 0; i < 30; i++) {
+      spawnBubble(true);
+    }
+  }
+
+  function spawnBubble(initial) {
+    state.bubbles.push({
+      x: rand(0, state.w),
+      y: initial ? rand(0, state.h) : state.h + rand(0, 30),
+      r: rand(2, 6),
+      vy: rand(25, 55),
+      sway: rand(0, Math.PI * 2),
+      swayAmp: rand(8, 22),
+    });
+  }
+
+  function drawBackground(t) {
+    const ctx = state.ctx;
+    // shimmering caustics on top water
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 4; i++) {
+      const yy = (i / 4) * state.sandY;
+      ctx.fillStyle = `rgba(180, 230, 255, ${0.03 + 0.02 * Math.sin(t * 0.0006 + i)})`;
+      ctx.fillRect(0, yy, state.w, state.sandY / 4);
+    }
+    ctx.restore();
+
+    // Sand
+    const sandGrad = ctx.createLinearGradient(0, state.sandY, 0, state.h);
+    sandGrad.addColorStop(0, '#d9b97a');
+    sandGrad.addColorStop(0.4, '#caa364');
+    sandGrad.addColorStop(1, '#9a7a44');
+    ctx.fillStyle = sandGrad;
+    // wavy top edge to sand
+    ctx.beginPath();
+    ctx.moveTo(0, state.sandY + Math.sin(0) * 3);
+    for (let x = 0; x <= state.w; x += 12) {
+      const y = state.sandY + Math.sin(x * 0.025 + t * 0.0005) * 4 + Math.sin(x * 0.07) * 2;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(state.w, state.h);
+    ctx.lineTo(0, state.h);
+    ctx.closePath();
+    ctx.fill();
+
+    // sand grain dots
+    for (const d of state.sandDots) {
+      ctx.fillStyle = `rgba(80, 50, 20, ${d.a})`;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawRocks() {
+    const ctx = state.ctx;
+    for (const r of state.rocks) {
+      const baseY = state.sandY + 6;
+      const grad = ctx.createLinearGradient(r.x, baseY - r.ry, r.x, baseY + r.ry);
+      grad.addColorStop(0, shade('rgb(120,120,135)', r.shade + 20));
+      grad.addColorStop(1, shade('rgb(60,60,75)', r.shade));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(r.x, baseY, r.rx, r.ry, 0, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      // little speckle
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.beginPath();
+      ctx.ellipse(r.x - r.rx * 0.3, baseY - r.ry * 0.4, r.rx * 0.25, r.ry * 0.15, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawPlants(t) {
+    const ctx = state.ctx;
+    for (const p of state.plants) {
+      ctx.strokeStyle = `hsl(${p.hue}, 55%, 32%)`;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = p.thickness;
+      ctx.beginPath();
+      const segments = 8;
+      let prevX = p.x, prevY = state.sandY + 4;
+      ctx.moveTo(prevX, prevY);
+      for (let i = 1; i <= segments; i++) {
+        const k = i / segments;
+        const sway = Math.sin(t * 0.0015 + p.seed + k * 1.8) * 10 * k;
+        const x = p.x + sway;
+        const y = (state.sandY + 4) - p.h * k;
+        ctx.lineTo(x, y);
+        prevX = x; prevY = y;
+      }
+      ctx.stroke();
+      // a leaf at tip
+      ctx.fillStyle = `hsl(${p.hue}, 60%, 38%)`;
+      ctx.beginPath();
+      ctx.ellipse(prevX, prevY, 7, 4, Math.sin(t * 0.001 + p.seed), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawBubbles(dt) {
+    const ctx = state.ctx;
+    for (let i = state.bubbles.length - 1; i >= 0; i--) {
+      const b = state.bubbles[i];
+      b.y -= b.vy * dt;
+      b.sway += dt * 2;
+      const x = b.x + Math.sin(b.sway) * 0.3 * b.swayAmp;
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath();
+      ctx.arc(x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      if (b.y + b.r < 0) state.bubbles.splice(i, 1);
+    }
+    while (state.bubbles.length < 30) spawnBubble(false);
+  }
+
+  function drawFish(f, t) {
+    const ctx = state.ctx;
+    ctx.save();
+    ctx.translate(f.x, f.y + Math.sin(t * 0.002 + f.bobSeed) * 3);
+    ctx.scale(Math.sign(f.vx) || 1, 1);
+    // tail
+    const wag = Math.sin(t * 0.012 + f.wagSeed) * 0.5;
+    ctx.fillStyle = shade(toRgb(f.color), -20);
+    ctx.beginPath();
+    ctx.moveTo(-f.size, 0);
+    ctx.lineTo(-f.size - f.size * 0.7, -f.size * 0.45 + wag * f.size * 0.3);
+    ctx.lineTo(-f.size - f.size * 0.7, f.size * 0.45 + wag * f.size * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    // body
+    const bodyGrad = ctx.createLinearGradient(0, -f.size * 0.5, 0, f.size * 0.5);
+    bodyGrad.addColorStop(0, shade(toRgb(f.color), 25));
+    bodyGrad.addColorStop(1, shade(toRgb(f.color), -10));
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, f.size, f.size * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // top fin
+    ctx.fillStyle = shade(toRgb(f.color), -15);
+    ctx.beginPath();
+    ctx.moveTo(-f.size * 0.2, -f.size * 0.4);
+    ctx.lineTo(0, -f.size * 0.9);
+    ctx.lineTo(f.size * 0.3, -f.size * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    // belly fin
+    ctx.beginPath();
+    ctx.moveTo(-f.size * 0.1, f.size * 0.4);
+    ctx.lineTo(f.size * 0.1, f.size * 0.7);
+    ctx.lineTo(f.size * 0.3, f.size * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    // eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(f.size * 0.55, -f.size * 0.12, f.size * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.arc(f.size * 0.6, -f.size * 0.12, f.size * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function toRgb(hex) {
+    if (hex.startsWith('rgb')) return hex;
+    const v = hex.replace('#', '');
+    const r = parseInt(v.substr(0, 2), 16);
+    const g = parseInt(v.substr(2, 2), 16);
+    const b = parseInt(v.substr(4, 2), 16);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function drawLobster(t) {
+    const ctx = state.ctx;
+    const L = state.lobster;
+    const color = cpuToColor(state.cpu);
+    const dark = shade(color, -30);
+    const darker = shade(color, -55);
+    const light = shade(color, 25);
+
+    ctx.save();
+    // bob a little to simulate scuttling
+    const bob = Math.sin(t * 0.018) * 1.5;
+    ctx.translate(L.x, L.y + bob);
+    ctx.scale(L.facing, 1);
+
+    // soft shadow on sand
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(-2, 18, 56, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ----- Tail segments (back/left when facing right) -----
+    const tailWiggle = Math.sin(t * 0.02) * 0.08;
+    for (let i = 3; i >= 0; i--) {
+      ctx.save();
+      ctx.rotate(tailWiggle * (i + 1) * 0.5);
+      ctx.fillStyle = i % 2 === 0 ? color : dark;
+      ctx.strokeStyle = darker;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(-26 - i * 9, -6 - i * 0.6, 14, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+    // tail fan
+    ctx.fillStyle = dark;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-58, -6);
+    ctx.lineTo(-78, -20);
+    ctx.lineTo(-86, -8);
+    ctx.lineTo(-86, 6);
+    ctx.lineTo(-78, 16);
+    ctx.lineTo(-58, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // ----- Walking legs (3 pairs) under body -----
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const phase = t * 0.02 + i * 1.1;
+      const lift = Math.max(0, Math.sin(phase)) * 4;
+      const lx = -14 + i * 9;
+      ctx.beginPath();
+      ctx.moveTo(lx, 4);
+      ctx.lineTo(lx - 4, 14 - lift);
+      ctx.lineTo(lx + 2, 22 - lift);
+      ctx.stroke();
+    }
+
+    // ----- Main body (carapace) -----
+    const bodyGrad = ctx.createLinearGradient(0, -22, 0, 8);
+    bodyGrad.addColorStop(0, light);
+    bodyGrad.addColorStop(1, color);
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(0, -10, 30, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // segment line
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-18, -2); ctx.quadraticCurveTo(0, 4, 18, -2);
+    ctx.stroke();
+
+    // ----- Head/rostrum -----
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(22, -13, 14, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // rostrum spike
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.moveTo(34, -22);
+    ctx.lineTo(40, -18);
+    ctx.lineTo(34, -14);
+    ctx.closePath();
+    ctx.fill();
+
+    // ----- Eye (cute) -----
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(28, -17, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(29, -17, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(29.5, -17.7, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // tiny smile
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(30, -9, 3, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+
+    // ----- Antennae -----
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 1.2;
+    const antSway = Math.sin(t * 0.004) * 4;
+    ctx.beginPath();
+    ctx.moveTo(32, -22);
+    ctx.quadraticCurveTo(50, -42 + antSway, 70, -46 + antSway);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(30, -23);
+    ctx.quadraticCurveTo(46, -38 - antSway, 60, -50 - antSway);
+    ctx.stroke();
+
+    // ----- Claws (two big ones) -----
+    drawClaw(ctx, 30, -4, 0.15, color, dark, darker, light, t, 0);
+    drawClaw(ctx, 32, 2, 0.25, color, dark, darker, light, t, 0.8);
+
+    ctx.restore();
+  }
+
+  function drawClaw(ctx, x0, y0, baseAngle, color, dark, darker, light, t, phase) {
+    const clack = Math.sin(t * 0.006 + phase) * 0.15;
+    ctx.save();
+    ctx.translate(x0, y0);
+    ctx.rotate(baseAngle);
+    // upper arm
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(14, 6);
+    ctx.stroke();
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(14, 6);
+    ctx.stroke();
+    // forearm
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(14, 6);
+    ctx.lineTo(28, 12);
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(14, 6);
+    ctx.lineTo(28, 12);
+    ctx.stroke();
+    // claw (pincer) — big rounded shape with two fingers
+    ctx.translate(34, 12);
+    ctx.rotate(0.1);
+    const grad = ctx.createLinearGradient(-12, -10, 12, 12);
+    grad.addColorStop(0, light);
+    grad.addColorStop(1, color);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = darker;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 13, 9, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // upper finger
+    ctx.save();
+    ctx.rotate(-0.2 - clack);
+    ctx.beginPath();
+    ctx.moveTo(8, -4);
+    ctx.lineTo(22, -10);
+    ctx.lineTo(20, -2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    // lower finger
+    ctx.save();
+    ctx.rotate(0.25 + clack);
+    ctx.beginPath();
+    ctx.moveTo(8, 4);
+    ctx.lineTo(22, 8);
+    ctx.lineTo(18, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+  }
+
+  function step(now) {
+    if (!state.running) return;
+    const t = now - state.startTime;
+    const dt = Math.min(0.05, (now - (state.lastFrame || now)) / 1000);
+    state.lastFrame = now;
+    const ctx = state.ctx;
+
+    ctx.clearRect(0, 0, state.w, state.h);
+    drawBackground(t);
+    drawPlants(t);
+    drawRocks();
+
+    // fish update + draw
+    for (const f of state.fish) {
+      f.x += f.vx * dt;
+      if (f.x < f.size + 8) { f.x = f.size + 8; f.vx = Math.abs(f.vx); }
+      if (f.x > state.w - f.size - 8) { f.x = state.w - f.size - 8; f.vx = -Math.abs(f.vx); }
+      drawFish(f, t);
+    }
+
+    drawBubbles(dt);
+
+    // lobster update
+    const L = state.lobster;
+    L.x += L.vx * dt * L.facing;
+    const margin = 70;
+    if (L.x < margin) { L.x = margin; L.facing = 1; }
+    if (L.x > state.w - margin) { L.x = state.w - margin; L.facing = -1; }
+    drawLobster(t);
+
+    state.rafId = requestAnimationFrame(step);
+  }
+
+  function start() {
+    if (state.running) return;
+    const canvas = document.getElementById('tankCanvas');
+    if (!canvas) return;
+    state.canvas = canvas;
+    state.ctx = canvas.getContext('2d');
+    if (!state.lobster) {
+      resize();
+      initEntities();
+    } else {
+      resize();
+    }
+    state.running = true;
+    state.lastFrame = performance.now();
+    state.startTime = performance.now();
+    state.rafId = requestAnimationFrame(step);
+    startMock();
+    window.addEventListener('resize', onResize);
+  }
+
+  function stop() {
+    state.running = false;
+    if (state.rafId) cancelAnimationFrame(state.rafId);
+    state.rafId = 0;
+    stopMock();
+    window.removeEventListener('resize', onResize);
+  }
+
+  function onResize() {
+    if (!state.running) return;
+    resize();
+  }
+
+  // ----- Mock data loop (per the data contract in TASK.md) -----
+  function startMock() {
+    stopMock();
+    state.mockId = setInterval(tickMock, 250);
+    tickMock();
+  }
+  function stopMock() {
+    if (state.mockId) clearInterval(state.mockId);
+    state.mockId = null;
+  }
+  function tickMock() {
+    const t = performance.now() / 1000;
+    // smoothly varying user + system percentages, summing to a value 0-100
+    const total = clamp(50 + 35 * Math.sin(t * 0.25) + 12 * Math.sin(t * 0.9 + 1.2), 0, 100);
+    const userFrac = 0.55 + 0.3 * Math.sin(t * 0.45);
+    const user = clamp(total * userFrac, 0, 100);
+    const sys = clamp(total - user, 0, 100);
+    onCpuSample({
+      pid: 4821,
+      is_running: true,
+      openclaw_cpu_user: +user.toFixed(1),
+      openclaw_cpu_system: +sys.toFixed(1),
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+  }
+
+  // Hook Person 3 can call: pass either a single sample or the rolling buffer.
+  function onCpuSample(sample) {
+    if (Array.isArray(sample)) sample = sample[sample.length - 1];
+    if (!sample) return;
+    state.cpuUser = sample.openclaw_cpu_user || 0;
+    state.cpuSys = sample.openclaw_cpu_system || 0;
+    state.cpu = clamp(state.cpuUser + state.cpuSys, 0, 100);
+    const valEl = document.getElementById('tankCpuValue');
+    const barEl = document.getElementById('tankCpuBar');
+    const uEl = document.getElementById('tankCpuUser');
+    const sEl = document.getElementById('tankCpuSys');
+    if (valEl) valEl.textContent = state.cpu.toFixed(1) + '%';
+    if (barEl) barEl.style.width = state.cpu.toFixed(1) + '%';
+    if (uEl) uEl.textContent = state.cpuUser.toFixed(1);
+    if (sEl) sEl.textContent = state.cpuSys.toFixed(1);
+  }
+
+  // Expose hooks for Person 3 on integration day.
+  window.renderCpuProfiler = function (bufferOrSample) {
+    onCpuSample(bufferOrSample);
+  };
+  window.startCpuProfilerMock = startMock;
+  window.stopCpuProfilerMock = stopMock;
+
+  // Wire up tab switching — script runs at end of body so elements exist
+  function wireNav() {
+    document.querySelectorAll('.nav-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        if (item.dataset.page === 'tank') {
+          // start on next tick so the page becomes visible & gets a real size
+          setTimeout(start, 0);
+        } else if (state.running) {
+          stop();
+        }
+      });
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireNav);
+  } else {
+    wireNav();
+  }
+})();
 </script>
 </body>
 </html>
