@@ -2,8 +2,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const crypto = require('crypto');
+const WebSocket = require('ws');
 
 const PORT = parseInt(process.env.DASHBOARD_PORT || '7000');
 const OPENCLAW_DIR = process.env.OPENCLAW_DIR || path.join(os.homedir(), '.openclaw');
@@ -2627,6 +2628,59 @@ const server = http.createServer((req, res) => {
     res.end('Error loading dashboard');
   }
 });
+
+const wss = new WebSocket.Server({ server });
+
+const wsClients = new Set();
+
+function generateProcessMetrics() {
+  return {
+    pid: 4821,
+    is_running: true,
+    openclaw_cpu_user: parseFloat((10 + Math.random() * 15).toFixed(1)),
+    openclaw_cpu_system: parseFloat((2 + Math.random() * 8).toFixed(1)),
+    timestamp: Math.floor(Date.now() / 1000)
+  };
+}
+
+wss.on('connection', (ws) => {
+  wsClients.add(ws);
+  console.log(`WebSocket client connected. Total clients: ${wsClients.size}`);
+
+  try {
+    ws.send(JSON.stringify(generateProcessMetrics()));
+  } catch (e) {
+    console.error('Failed to send initial WS data:', e.message);
+  }
+
+  ws.on('close', () => {
+    wsClients.delete(ws);
+    console.log(`WebSocket client disconnected. Total clients: ${wsClients.size}`);
+  });
+
+  ws.on('error', (err) => {
+    console.error('WebSocket error:', err.message);
+    wsClients.delete(ws);
+  });
+});
+
+let streamInterval = setInterval(() => {
+  if (wsClients.size === 0) return;
+
+  const metrics = generateProcessMetrics();
+  const message = JSON.stringify(metrics);
+
+  wsClients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(message);
+      } catch (err) {
+        console.error('Failed to send WS message:', err.message);
+        wsClients.delete(client);
+      }
+    }
+  });
+}, 500);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('Dashboard: http://0.0.0.0:' + PORT);
