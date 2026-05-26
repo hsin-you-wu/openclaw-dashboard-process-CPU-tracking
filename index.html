@@ -7224,6 +7224,56 @@ async function dockerAction(action, id) {
     wireNav();
   }
 })();
+const lwBuffer = []
+const LW_MAX = 50
+
+//function lwPushData(data) {
+//  lwBuffer.push(data)
+//  if (lwBuffer.length > LW_MAX) lwBuffer.shift()
+//  if (typeof lwRenderUI === 'function') lwRenderUI(data)
+//  if (typeof lwRenderChart === 'function') lwRenderChart(lwBuffer)
+//}
+
+function lwPushData(data) {
+  lwBuffer.push(data)
+  if (lwBuffer.length > LW_MAX) lwBuffer.shift()
+  if (typeof window.renderCpuProfiler === 'function') {
+    window.renderCpuProfiler(data)
+  }
+}
+
+// WebSocket 連線人員 2 的 server
+let lwSocket = null
+
+function lwStartReal() {
+  const token = getStoredToken()
+  lwSocket = new WebSocket('ws://localhost:7000?token=' + encodeURIComponent(token))
+
+  lwSocket.onopen = () => {
+    console.log('🦞 WebSocket 連線成功')
+  }
+
+  lwSocket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      if (data.pid && data.openclaw_cpu_user !== undefined) {
+        lwPushData(data)
+      }
+    } catch (e) {
+      console.error('JSON 解析失敗：', e)
+    }
+  }
+
+  lwSocket.onerror = () => {
+    console.error('🦞 WebSocket 錯誤')
+  }
+
+  lwSocket.onclose = () => {
+    console.log('🦞 WebSocket 斷線')
+  }
+}
+
+lwStartReal()
 </script>
 </body>
 </html>
