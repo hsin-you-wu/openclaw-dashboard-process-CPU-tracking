@@ -7227,13 +7227,6 @@ async function dockerAction(action, id) {
 const lwBuffer = []
 const LW_MAX = 50
 
-//function lwPushData(data) {
-//  lwBuffer.push(data)
-//  if (lwBuffer.length > LW_MAX) lwBuffer.shift()
-//  if (typeof lwRenderUI === 'function') lwRenderUI(data)
-//  if (typeof lwRenderChart === 'function') lwRenderChart(lwBuffer)
-//}
-
 function lwPushData(data) {
   lwBuffer.push(data)
   if (lwBuffer.length > LW_MAX) lwBuffer.shift()
