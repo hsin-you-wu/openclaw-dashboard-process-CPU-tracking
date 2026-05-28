@@ -1392,6 +1392,30 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
   color: rgba(255, 255, 255, 0.55);
   font-style: italic;
 }
+.tank-hud-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+.tank-hud-list:empty { display: none; }
+.tank-hud-empty {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+  padding: 4px 0;
+}
+.tank-hud-empty.hidden { display: none; }
+.tank-hud-agent {
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.tank-hud-agent:last-child { border-bottom: none; padding-bottom: 0; }
+.tank-hud-agent .tank-hud-value { font-size: 15px; }
+body.light-theme .tank-hud-empty { color: rgba(0,0,0,0.55); }
+body.light-theme .tank-hud-agent { border-bottom-color: rgba(0,0,0,0.1); }
 body.light-theme .tank-hud {
   background: rgba(255, 255, 255, 0.7);
   color: #15243d;
@@ -2328,15 +2352,8 @@ body.light-theme .tank-hud-hint { color: rgba(0,0,0,0.55); }
         <canvas id="tankCanvas"></canvas>
         <div class="tank-hud">
           <div class="tank-hud-title">🦞 OpenClaw Tank</div>
-          <div class="tank-hud-row">
-            <span class="tank-hud-label">CPU</span>
-            <span class="tank-hud-value" id="tankCpuValue">0.0%</span>
-          </div>
-          <div class="tank-hud-bar"><div class="tank-hud-bar-fill" id="tankCpuBar"></div></div>
-          <div class="tank-hud-row tank-hud-sub">
-            <span>user <span id="tankCpuUser">0.0</span></span>
-            <span>sys <span id="tankCpuSys">0.0</span></span>
-          </div>
+          <div class="tank-hud-empty" id="tankHudEmpty">Waiting for agents…</div>
+          <div class="tank-hud-list" id="tankHudList"></div>
           <div class="tank-hud-hint">Lobster turns red as CPU rises</div>
         </div>
       </div>
@@ -5835,10 +5852,7 @@ async function dockerAction(action, id) {
     running: false,
     rafId: 0,
     startTime: performance.now(),
-    cpu: 0,
-    cpuUser: 0,
-    cpuSys: 0,
-    lobster: null,
+    lobsters: new Map(), // pid -> lobster
     fish: [],
     bubbles: [],
     rocks: [],
@@ -5846,6 +5860,7 @@ async function dockerAction(action, id) {
     sandDots: [],
     mockId: null,
   };
+  const AGENT_TIMEOUT_MS = 10000;
 
   function rand(min, max) { return min + Math.random() * (max - min); }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -5880,9 +5895,9 @@ async function dockerAction(action, id) {
     state.canvas.style.height = state.h + 'px';
     state.ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     state.sandY = Math.round(state.h * (2 / 3));
-    if (state.lobster) {
-      state.lobster.y = state.sandY + 4;
-      state.lobster.x = clamp(state.lobster.x, 80, state.w - 80);
+    for (const L of state.lobsters.values()) {
+      L.y = state.sandY + 4;
+      L.x = clamp(L.x, 80, state.w - 80);
     }
     placeStaticDecor();
   }
@@ -5936,14 +5951,24 @@ async function dockerAction(action, id) {
     };
   }
 
-  function initEntities() {
-    state.lobster = {
-      x: state.w * 0.4,
+  function spawnLobster(pid) {
+    const L = {
+      pid,
+      x: rand(120, Math.max(140, state.w - 120)),
       y: state.sandY + 4,
-      vx: 60, // px/sec
-      facing: 1,
+      vx: rand(45, 75),
+      facing: Math.random() < 0.5 ? -1 : 1,
       bob: 0,
+      cpu: 0,
+      cpuUser: 0,
+      cpuSys: 0,
+      lastSeen: performance.now(),
     };
+    state.lobsters.set(pid, L);
+    return L;
+  }
+
+  function initEntities() {
     state.fish = [];
     const speciesDefs = [
       { name: 'tropical', colors: ['#f5b342', '#f59e0b', '#ef6c4d'], stripeColor: '#3a2410', body: { wMul: 1.0, hMul: 0.55 }, stripes: 3 },
@@ -6578,10 +6603,9 @@ async function dockerAction(action, id) {
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  function drawLobster(t) {
+  function drawLobster(L, t) {
     const ctx = state.ctx;
-    const L = state.lobster;
-    const c = cpuToColor(state.cpu);
+    const c = cpuToColor(L.cpu);
     const cDark = shade(c, -30);
     const cDarker = shade(c, -55);
     const cLight = shade(c, 28);
@@ -7111,13 +7135,21 @@ async function dockerAction(action, id) {
 
     drawBubbles(dt);
 
-    // lobster update
-    const L = state.lobster;
-    L.x += L.vx * dt * L.facing;
+    // lobster update — iterate all agents, drop stale ones
     const margin = 70;
-    if (L.x < margin) { L.x = margin; L.facing = 1; }
-    if (L.x > state.w - margin) { L.x = state.w - margin; L.facing = -1; }
-    drawLobster(t);
+    let hudDirty = false;
+    for (const [pid, L] of state.lobsters) {
+      if (now - L.lastSeen > AGENT_TIMEOUT_MS) {
+        state.lobsters.delete(pid);
+        hudDirty = true;
+        continue;
+      }
+      L.x += L.vx * dt * L.facing;
+      if (L.x < margin) { L.x = margin; L.facing = 1; }
+      if (L.x > state.w - margin) { L.x = state.w - margin; L.facing = -1; }
+      drawLobster(L, t);
+    }
+    if (hudDirty) renderHud();
 
     state.rafId = requestAnimationFrame(step);
   }
@@ -7128,12 +7160,11 @@ async function dockerAction(action, id) {
     if (!canvas) return;
     state.canvas = canvas;
     state.ctx = canvas.getContext('2d');
-    if (!state.lobster) {
-      resize();
+    resize();
+    if (!state.fish.length) {
       initEntities();
-    } else {
-      resize();
     }
+    renderHud();
     state.running = true;
     state.lastFrame = performance.now();
     state.startTime = performance.now();
@@ -7165,37 +7196,89 @@ async function dockerAction(action, id) {
     if (state.mockId) clearInterval(state.mockId);
     state.mockId = null;
   }
+  const MOCK_AGENTS = [
+    { pid: 4821, phase: 0.0,  freq: 0.25, amp: 35, base: 50 },
+    { pid: 5102, phase: 1.3,  freq: 0.40, amp: 22, base: 28 },
+    { pid: 6310, phase: 2.7,  freq: 0.18, amp: 40, base: 55 },
+  ];
   function tickMock() {
     const t = performance.now() / 1000;
-    // smoothly varying user + system percentages, summing to a value 0-100
-    const total = clamp(50 + 35 * Math.sin(t * 0.25) + 12 * Math.sin(t * 0.9 + 1.2), 0, 100);
-    const userFrac = 0.55 + 0.3 * Math.sin(t * 0.45);
-    const user = clamp(total * userFrac, 0, 100);
-    const sys = clamp(total - user, 0, 100);
-    onCpuSample({
-      pid: 4821,
-      is_running: true,
-      openclaw_cpu_user: +user.toFixed(1),
-      openclaw_cpu_system: +sys.toFixed(1),
-      timestamp: Math.floor(Date.now() / 1000),
+    for (const a of MOCK_AGENTS) {
+      const total = clamp(a.base + a.amp * Math.sin(t * a.freq + a.phase) + 8 * Math.sin(t * 0.9 + a.phase), 0, 100);
+      const userFrac = 0.55 + 0.3 * Math.sin(t * 0.45 + a.phase);
+      const user = clamp(total * userFrac, 0, 100);
+      const sys = clamp(total - user, 0, 100);
+      onCpuSample({
+        pid: a.pid,
+        is_running: true,
+        openclaw_cpu_user: +user.toFixed(1),
+        openclaw_cpu_system: +sys.toFixed(1),
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+    }
+  }
+
+  function renderHud() {
+    const listEl = document.getElementById('tankHudList');
+    const emptyEl = document.getElementById('tankHudEmpty');
+    if (!listEl) return;
+    const pids = Array.from(state.lobsters.keys()).sort((a, b) => a - b);
+    if (emptyEl) emptyEl.classList.toggle('hidden', pids.length > 0);
+
+    const seen = new Set();
+    for (const pid of pids) {
+      const L = state.lobsters.get(pid);
+      seen.add(String(pid));
+      let row = listEl.querySelector('[data-pid="' + pid + '"]');
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'tank-hud-agent';
+        row.dataset.pid = String(pid);
+        row.innerHTML =
+          '<div class="tank-hud-row">' +
+            '<span class="tank-hud-label">pid <span class="js-pid"></span></span>' +
+            '<span class="tank-hud-value js-cpu">0.0%</span>' +
+          '</div>' +
+          '<div class="tank-hud-bar"><div class="tank-hud-bar-fill js-bar"></div></div>' +
+          '<div class="tank-hud-row tank-hud-sub">' +
+            '<span>user <span class="js-user">0.0</span></span>' +
+            '<span>sys <span class="js-sys">0.0</span></span>' +
+          '</div>';
+        listEl.appendChild(row);
+        row.querySelector('.js-pid').textContent = pid;
+      }
+      row.querySelector('.js-cpu').textContent = L.cpu.toFixed(1) + '%';
+      row.querySelector('.js-bar').style.width = L.cpu.toFixed(1) + '%';
+      row.querySelector('.js-user').textContent = L.cpuUser.toFixed(1);
+      row.querySelector('.js-sys').textContent = L.cpuSys.toFixed(1);
+    }
+    // remove stale rows
+    listEl.querySelectorAll('.tank-hud-agent').forEach(function (row) {
+      if (!seen.has(row.dataset.pid)) row.remove();
     });
   }
 
-  // Hook Person 3 can call: pass either a single sample or the rolling buffer.
-  function onCpuSample(sample) {
-    if (Array.isArray(sample)) sample = sample[sample.length - 1];
-    if (!sample) return;
-    state.cpuUser = sample.openclaw_cpu_user || 0;
-    state.cpuSys = sample.openclaw_cpu_system || 0;
-    state.cpu = clamp(state.cpuUser + state.cpuSys, 0, 100);
-    const valEl = document.getElementById('tankCpuValue');
-    const barEl = document.getElementById('tankCpuBar');
-    const uEl = document.getElementById('tankCpuUser');
-    const sEl = document.getElementById('tankCpuSys');
-    if (valEl) valEl.textContent = state.cpu.toFixed(1) + '%';
-    if (barEl) barEl.style.width = state.cpu.toFixed(1) + '%';
-    if (uEl) uEl.textContent = state.cpuUser.toFixed(1);
-    if (sEl) sEl.textContent = state.cpuSys.toFixed(1);
+  // Hook Person 3 can call: pass either a single sample or an array of samples.
+  function onCpuSample(input) {
+    const samples = Array.isArray(input) ? input : [input];
+    for (const sample of samples) {
+      if (!sample || sample.pid == null) continue;
+      const pid = sample.pid;
+      if (sample.is_running === false) {
+        state.lobsters.delete(pid);
+        continue;
+      }
+      let L = state.lobsters.get(pid);
+      if (!L) {
+        if (!state.canvas) continue; // tank not initialized — drop samples until opened
+        L = spawnLobster(pid);
+      }
+      L.cpuUser = sample.openclaw_cpu_user || 0;
+      L.cpuSys = sample.openclaw_cpu_system || 0;
+      L.cpu = clamp(L.cpuUser + L.cpuSys, 0, 100);
+      L.lastSeen = performance.now();
+    }
+    renderHud();
   }
 
   // Expose hooks for Person 3 on integration day.
