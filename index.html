@@ -7169,7 +7169,7 @@ async function dockerAction(action, id) {
     state.lastFrame = performance.now();
     state.startTime = performance.now();
     state.rafId = requestAnimationFrame(step);
-    startMock();
+    // startMock();
     window.addEventListener('resize', onResize);
   }
 
