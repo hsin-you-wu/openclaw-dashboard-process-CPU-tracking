@@ -541,6 +541,49 @@ body {
   opacity: 1;
 }
 
+.cpu-profiler-chart {
+  width: 100%;
+  height: 240px;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cpu-profiler-tooltip {
+  position: absolute;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.cpu-profiler-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
 .view-all-link {
   display: block;
   text-align: center;
@@ -1298,134 +1341,6 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
   transition: all 0.2s;
 }
 #themeToggle:hover { background: var(--bg-tertiary); transform: scale(1.05); }
-
-/* ===== Tank tab ===== */
-#tank {
-  margin: -32px;
-  padding: 0;
-  position: relative;
-  overflow: hidden;
-}
-.tank-scene {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - 40px);
-  background: linear-gradient(180deg,
-    #02132b 0%,
-    #05305b 25%,
-    #0a5e92 55%,
-    #1389b3 78%,
-    #1f9fbf 100%);
-  overflow: hidden;
-}
-#tankCanvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.tank-hud {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  z-index: 5;
-  min-width: 220px;
-  padding: 14px 16px;
-  background: rgba(8, 18, 35, 0.55);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
-  color: #f5f7fa;
-  font-family: 'Inter', sans-serif;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-}
-.tank-hud-title {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  margin-bottom: 10px;
-  color: #ffd9c2;
-}
-.tank-hud-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-.tank-hud-label {
-  color: rgba(255, 255, 255, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 10px;
-}
-.tank-hud-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  font-weight: 600;
-  color: #ffe3b0;
-}
-.tank-hud-bar {
-  position: relative;
-  height: 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-  margin: 4px 0 8px;
-}
-.tank-hud-bar-fill {
-  position: absolute;
-  top: 0; left: 0; bottom: 0;
-  width: 0%;
-  background: linear-gradient(90deg, #8a8a8a, #d97757, #7a1010);
-  transition: width 0.4s ease;
-}
-.tank-hud-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.65);
-}
-.tank-hud-hint {
-  margin-top: 8px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.55);
-  font-style: italic;
-}
-.tank-hud-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 280px;
-  overflow-y: auto;
-  pointer-events: auto;
-}
-.tank-hud-list:empty { display: none; }
-.tank-hud-empty {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
-  font-style: italic;
-  padding: 4px 0;
-}
-.tank-hud-empty.hidden { display: none; }
-.tank-hud-agent {
-  padding-bottom: 8px;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
-}
-.tank-hud-agent:last-child { border-bottom: none; padding-bottom: 0; }
-.tank-hud-agent .tank-hud-value { font-size: 15px; }
-body.light-theme .tank-hud-empty { color: rgba(0,0,0,0.55); }
-body.light-theme .tank-hud-agent { border-bottom-color: rgba(0,0,0,0.1); }
-body.light-theme .tank-hud {
-  background: rgba(255, 255, 255, 0.7);
-  color: #15243d;
-  border-color: rgba(0, 0, 0, 0.08);
-}
-body.light-theme .tank-hud-title { color: #8a3014; }
-body.light-theme .tank-hud-value { color: #5a2a0a; }
-body.light-theme .tank-hud-label,
-body.light-theme .tank-hud-sub,
-body.light-theme .tank-hud-hint { color: rgba(0,0,0,0.55); }
 </style>
 </head>
 <body>
@@ -1552,10 +1467,6 @@ body.light-theme .tank-hud-hint { color: rgba(0,0,0,0.55); }
       <div class="nav-item" data-page="docker">
         <span class="icon">🐳</span>
         <span class="nav-text">Docker</span>
-      </div>
-      <div class="nav-item" data-page="tank">
-        <span class="icon">🦞</span>
-        <span class="nav-text">Tank</span>
       </div>
     </nav>
     <div style="padding:16px;border-top:1px solid var(--border);margin-top:auto;">
@@ -1697,6 +1608,24 @@ body.light-theme .tank-hud-hint { color: rgba(0,0,0,0.55); }
                 <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">7-day</div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-24">
+        <h3 class="card-title">Process-Isolated CPU Profiler</h3>
+        <div class="cpu-profiler-chart" id="cpuProfilerChartContainer">
+          <svg id="cpuProfilerSvg" width="100%" height="100%" preserveAspectRatio="none" style="display: block;"></svg>
+          <div id="cpuProfilerTooltip" class="cpu-profiler-tooltip"></div>
+        </div>
+        <div class="cpu-profiler-legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background: var(--accent);"></div>
+            <span>User Space</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: var(--cyan);"></div>
+            <span>Kernel Space</span>
           </div>
         </div>
       </div>
@@ -2343,18 +2272,6 @@ body.light-theme .tank-hud-hint { color: rgba(0,0,0,0.55); }
         <div class="card">
           <div class="card-title">📊 System</div>
           <pre id="dockerSystem" style="font-size:12px;max-height:300px;overflow-y:auto;white-space:pre-wrap;">Loading...</pre>
-        </div>
-      </div>
-    </div>
-
-    <div class="page" id="tank">
-      <div class="tank-scene">
-        <canvas id="tankCanvas"></canvas>
-        <div class="tank-hud">
-          <div class="tank-hud-title">🦞 OpenClaw Tank</div>
-          <div class="tank-hud-empty" id="tankHudEmpty">Waiting for agents…</div>
-          <div class="tank-hud-list" id="tankHudList"></div>
-          <div class="tank-hud-hint">Lobster turns red as CPU rises</div>
         </div>
       </div>
     </div>
@@ -5838,1518 +5755,124 @@ async function dockerAction(action, id) {
   } catch(e) { showToast('Error: ' + e.message, 'warning'); }
 }
 
-/* =========================================================================
-   Lobster Tank — CPU visualizer (mock data; will be replaced on integration)
-   ========================================================================= */
-(function tankModule() {
-  const state = {
-    canvas: null,
-    ctx: null,
-    dpr: 1,
-    w: 0,
-    h: 0,
-    sandY: 0,
-    running: false,
-    rafId: 0,
-    startTime: performance.now(),
-    lobsters: new Map(), // pid -> lobster
-    fish: [],
-    bubbles: [],
-    rocks: [],
-    plants: [],
-    sandDots: [],
-    mockId: null,
-  };
-  const AGENT_TIMEOUT_MS = 10000;
+// --- Process-Isolated CPU Profiler Logic ---
+let cpuProfilerData = [];
+const CPU_PROFILER_MAX_POINTS = 50;
 
-  function rand(min, max) { return min + Math.random() * (max - min); }
-  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-  function lerp(a, b, t) { return a + (b - a) * t; }
+function renderCpuProfiler(data) {
+  const svg = document.getElementById('cpuProfilerSvg');
+  const tooltip = document.getElementById('cpuProfilerTooltip');
+  if (!svg || !data || data.length < 2) return;
 
-  function cpuToColor(pct) {
-    const t = clamp(pct, 0, 100) / 100;
-    // gray (130,130,135) -> dark red (122, 16, 16)
-    const r = Math.round(lerp(130, 138, t));
-    const g = Math.round(lerp(130, 18, t));
-    const b = Math.round(lerp(135, 18, t));
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-  function shade(rgbStr, delta) {
-    const m = rgbStr.match(/\d+/g);
-    if (!m) return rgbStr;
-    const r = clamp(parseInt(m[0]) + delta, 0, 255);
-    const g = clamp(parseInt(m[1]) + delta, 0, 255);
-    const b = clamp(parseInt(m[2]) + delta, 0, 255);
-    return `rgb(${r}, ${g}, ${b})`;
-  }
+  const width = svg.clientWidth || svg.parentNode.clientWidth;
+  const height = svg.clientHeight || svg.parentNode.clientHeight;
+  const padding = { top: 20, right: 10, bottom: 20, left: 40 };
+  const graphWidth = width - padding.left - padding.right;
+  const graphHeight = height - padding.top - padding.bottom;
 
-  function resize() {
-    const scene = state.canvas.parentElement;
-    if (!scene) return;
-    state.dpr = window.devicePixelRatio || 1;
-    state.w = scene.clientWidth;
-    state.h = scene.clientHeight;
-    state.canvas.width = Math.floor(state.w * state.dpr);
-    state.canvas.height = Math.floor(state.h * state.dpr);
-    state.canvas.style.width = state.w + 'px';
-    state.canvas.style.height = state.h + 'px';
-    state.ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-    state.sandY = Math.round(state.h * (2 / 3));
-    for (const L of state.lobsters.values()) {
-      L.y = state.sandY + 4;
-      L.x = clamp(L.x, 80, state.w - 80);
+  const maxVal = Math.max(100, ...data.map(d => (d.openclaw_cpu_user || 0) + (d.openclaw_cpu_system || 0))) * 1.1;
+
+  const getX = (index) => padding.left + (index / (CPU_PROFILER_MAX_POINTS - 1)) * graphWidth;
+  const getY = (val) => padding.top + graphHeight - (val / maxVal) * graphHeight;
+
+  let systemPoints = [];
+  let combinedPoints = [];
+
+  data.forEach((d, i) => {
+    const x = getX(i);
+    const systemY = getY(d.openclaw_cpu_system || 0);
+    const combinedY = getY((d.openclaw_cpu_system || 0) + (d.openclaw_cpu_user || 0));
+    
+    systemPoints.push(`${x},${systemY}`);
+    combinedPoints.push(`${x},${combinedY}`);
+  });
+
+  const systemPathData = `M ${padding.left},${padding.top + graphHeight} ` + 
+    systemPoints.join(' L ') + 
+    ` L ${getX(data.length - 1)},${padding.top + graphHeight} Z`;
+
+  const userPathData = `M ${padding.left},${padding.top + graphHeight} ` + 
+    combinedPoints.join(' L ') + 
+    ` L ${getX(data.length - 1)},${padding.top + graphHeight} Z`;
+
+  svg.innerHTML = `
+    <line x1="${padding.left}" y1="${getY(0)}" x2="${width - padding.right}" y2="${getY(0)}" stroke="var(--border)" stroke-width="1" />
+    <line x1="${padding.left}" y1="${getY(50)}" x2="${width - padding.right}" y2="${getY(50)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4,4" />
+    <line x1="${padding.left}" y1="${getY(100)}" x2="${width - padding.right}" y2="${getY(100)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4,4" />
+    
+    <text x="${padding.left - 5}" y="${getY(0)}" fill="var(--text-muted)" font-size="10" text-anchor="end">0%</text>
+    <text x="${padding.left - 5}" y="${getY(50)}" fill="var(--text-muted)" font-size="10" text-anchor="end">50%</text>
+    <text x="${padding.left - 5}" y="${getY(100)}" fill="var(--text-muted)" font-size="10" text-anchor="end">100%</text>
+
+    <path d="${userPathData}" fill="var(--accent)" fill-opacity="0.3" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" />
+    <path d="${systemPathData}" fill="var(--cyan)" fill-opacity="0.5" stroke="var(--cyan)" stroke-width="2" stroke-linejoin="round" />
+    
+    <rect x="${padding.left}" y="${padding.top}" width="${graphWidth}" height="${graphHeight}" fill="transparent" id="cpuProfilerOverlay" style="cursor: crosshair;" />
+  `;
+
+  const overlay = document.getElementById('cpuProfilerOverlay');
+  overlay.addEventListener('mousemove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - padding.left;
+    const index = Math.round((mouseX / graphWidth) * (CPU_PROFILER_MAX_POINTS - 1));
+    
+    if (index >= 0 && index < data.length) {
+      const d = data[index];
+      tooltip.style.opacity = '1';
+      tooltip.style.left = (e.clientX - rect.left + 15) + 'px';
+      tooltip.style.top = (e.clientY - rect.top + 15) + 'px';
+      tooltip.innerHTML = `
+        <div style="font-weight:700; margin-bottom:4px;">PID: ${d.pid}</div>
+        <div style="display:flex; justify-content:space-between; gap:20px;">
+          <span style="color:var(--accent);">User Space:</span>
+          <span class="mono">${d.openclaw_cpu_user.toFixed(1)}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:20px;">
+          <span style="color:var(--cyan);">Kernel Space:</span>
+          <span class="mono">${d.openclaw_cpu_system.toFixed(1)}%</span>
+        </div>
+        <div style="margin-top:4px; font-size:10px; color:var(--text-muted);">
+          Total: ${(d.openclaw_cpu_user + d.openclaw_cpu_system).toFixed(1)}%
+        </div>
+      `;
     }
-    placeStaticDecor();
-  }
-
-  function placeStaticDecor() {
-    state.rocks = [];
-    state.plants = [];
-    state.sandDots = [];
-    const rng = mulberry32(7);
-
-    const rockCount = Math.max(3, Math.floor(state.w / 280));
-    for (let i = 0; i < rockCount; i++) {
-      state.rocks.push({
-        x: (i + 0.5) * (state.w / rockCount) + rng() * 60 - 30,
-        rx: rng() * 24 + 22,
-        ry: rng() * 10 + 12,
-        shade: rng() * 30 - 15,
-      });
-    }
-    const plantTypes = ['kelp', 'kelp', 'fan', 'grass'];
-    const plantCount = Math.max(5, Math.floor(state.w / 160));
-    for (let i = 0; i < plantCount; i++) {
-      state.plants.push({
-        x: (i + 0.5) * (state.w / plantCount) + rng() * 70 - 35,
-        h: rng() * 110 + 80,
-        seed: rng() * Math.PI * 2,
-        hue: 100 + rng() * 60,
-        thickness: 2.4 + rng() * 2,
-        type: plantTypes[Math.floor(rng() * plantTypes.length)],
-        bladeCount: 4 + Math.floor(rng() * 4),
-      });
-    }
-    const sandCount = Math.floor(state.w / 6);
-    for (let i = 0; i < sandCount; i++) {
-      state.sandDots.push({
-        x: rng() * state.w,
-        y: state.sandY + rng() * (state.h - state.sandY),
-        r: rng() * 1.2 + 0.3,
-        a: rng() * 0.35 + 0.05,
-      });
-    }
-  }
-
-  function mulberry32(seed) {
-    let s = seed >>> 0;
-    return function () {
-      s |= 0; s = s + 0x6D2B79F5 | 0;
-      let t = Math.imul(s ^ s >>> 15, 1 | s);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-
-  function spawnLobster(pid) {
-    const L = {
-      pid,
-      x: rand(120, Math.max(140, state.w - 120)),
-      y: state.sandY + 4,
-      vx: rand(45, 75),
-      facing: Math.random() < 0.5 ? -1 : 1,
-      bob: 0,
-      cpu: 0,
-      cpuUser: 0,
-      cpuSys: 0,
-      lastSeen: performance.now(),
-    };
-    state.lobsters.set(pid, L);
-    return L;
-  }
-
-  function initEntities() {
-    state.fish = [];
-    const speciesDefs = [
-      { name: 'tropical', colors: ['#f5b342', '#f59e0b', '#ef6c4d'], stripeColor: '#3a2410', body: { wMul: 1.0, hMul: 0.55 }, stripes: 3 },
-      { name: 'clownfish', colors: ['#ff7a2b', '#ff8f3d'], stripeColor: '#ffffff', body: { wMul: 0.95, hMul: 0.6 }, stripes: 3 },
-      { name: 'tang', colors: ['#3aa1ff', '#5cc0ff', '#1f7ed1'], stripeColor: '#ffe066', body: { wMul: 0.85, hMul: 0.78 }, stripes: 0, accent: 'tangPatch' },
-      { name: 'neon', colors: ['#6dd3ff', '#9ce4ff'], stripeColor: '#ff4f7a', body: { wMul: 1.05, hMul: 0.42 }, stripes: 0, accent: 'neonStripe' },
-      { name: 'guppy', colors: ['#a0e26b', '#7fd56b', '#ff8fb1'], stripeColor: '#ffffff', body: { wMul: 0.9, hMul: 0.5 }, stripes: 0, accent: 'spots', tailStyle: 'flowy' },
-    ];
-    const fishCount = Math.max(5, Math.floor(state.w / 240));
-    for (let i = 0; i < fishCount; i++) {
-      const upper = Math.max(60, state.sandY - 60);
-      const sp = speciesDefs[i % speciesDefs.length];
-      const color = sp.colors[Math.floor(Math.random() * sp.colors.length)];
-      state.fish.push({
-        x: rand(40, state.w - 40),
-        y: rand(60, upper),
-        size: rand(14, 26),
-        vx: rand(35, 85) * (Math.random() < 0.5 ? -1 : 1),
-        color,
-        species: sp.name,
-        bodyW: sp.body.wMul,
-        bodyH: sp.body.hMul,
-        stripeCount: sp.stripes,
-        stripeColor: sp.stripeColor,
-        accent: sp.accent || null,
-        tailStyle: sp.tailStyle || 'fork',
-        wagSeed: rand(0, Math.PI * 2),
-        bobSeed: rand(0, Math.PI * 2),
-        finSeed: rand(0, Math.PI * 2),
-      });
-    }
-    state.bubbles = [];
-    for (let i = 0; i < 30; i++) {
-      spawnBubble(true);
-    }
-  }
-
-  function spawnBubble(initial) {
-    state.bubbles.push({
-      x: rand(0, state.w),
-      y: initial ? rand(0, state.h) : state.h + rand(0, 30),
-      r: rand(2, 6),
-      vy: rand(25, 55),
-      sway: rand(0, Math.PI * 2),
-      swayAmp: rand(8, 22),
-    });
-  }
-
-  function drawBackground(t) {
-    const ctx = state.ctx;
-    // shimmering caustics on top water
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 4; i++) {
-      const yy = (i / 4) * state.sandY;
-      ctx.fillStyle = `rgba(180, 230, 255, ${0.03 + 0.02 * Math.sin(t * 0.0006 + i)})`;
-      ctx.fillRect(0, yy, state.w, state.sandY / 4);
-    }
-    ctx.restore();
-
-    // Sand
-    const sandGrad = ctx.createLinearGradient(0, state.sandY, 0, state.h);
-    sandGrad.addColorStop(0, '#d9b97a');
-    sandGrad.addColorStop(0.4, '#caa364');
-    sandGrad.addColorStop(1, '#9a7a44');
-    ctx.fillStyle = sandGrad;
-    // wavy top edge to sand
-    ctx.beginPath();
-    ctx.moveTo(0, state.sandY + Math.sin(0) * 3);
-    for (let x = 0; x <= state.w; x += 12) {
-      const y = state.sandY + Math.sin(x * 0.025 + t * 0.0005) * 4 + Math.sin(x * 0.07) * 2;
-      ctx.lineTo(x, y);
-    }
-    ctx.lineTo(state.w, state.h);
-    ctx.lineTo(0, state.h);
-    ctx.closePath();
-    ctx.fill();
-
-    // sand grain dots
-    for (const d of state.sandDots) {
-      ctx.fillStyle = `rgba(80, 50, 20, ${d.a})`;
-      ctx.beginPath();
-      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawRocks() {
-    const ctx = state.ctx;
-    for (const r of state.rocks) {
-      const baseY = state.sandY + 6;
-      const grad = ctx.createLinearGradient(r.x, baseY - r.ry, r.x, baseY + r.ry);
-      grad.addColorStop(0, shade('rgb(120,120,135)', r.shade + 20));
-      grad.addColorStop(1, shade('rgb(60,60,75)', r.shade));
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.ellipse(r.x, baseY, r.rx, r.ry, 0, Math.PI, 0);
-      ctx.closePath();
-      ctx.fill();
-      // little speckle
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.beginPath();
-      ctx.ellipse(r.x - r.rx * 0.3, baseY - r.ry * 0.4, r.rx * 0.25, r.ry * 0.15, -0.3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawPlants(t) {
-    const ctx = state.ctx;
-    for (const p of state.plants) {
-      if (p.type === 'fan') drawFanCoral(ctx, p, t);
-      else if (p.type === 'grass') drawGrass(ctx, p, t);
-      else drawKelp(ctx, p, t);
-    }
-  }
-
-  function plantStalkPoints(p, t, segments) {
-    const baseY = state.sandY + 4;
-    const pts = [];
-    for (let i = 0; i <= segments; i++) {
-      const k = i / segments;
-      const sway = Math.sin(t * 0.0012 + p.seed + k * 2.3) * 14 * k;
-      pts.push({ x: p.x + sway, y: baseY - p.h * k });
-    }
-    return pts;
-  }
-
-  function smoothStroke(ctx, pts) {
-    if (pts.length < 2) return;
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const xc = (pts[i].x + pts[i + 1].x) / 2;
-      const yc = (pts[i].y + pts[i + 1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
-    }
-    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
-    ctx.stroke();
-  }
-
-  function drawKelp(ctx, p, t) {
-    const baseY = state.sandY + 4;
-    const pts = plantStalkPoints(p, t, 16);
-    // base shadow at root
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.ellipse(p.x, baseY + 1, p.thickness * 2.4, 2.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // stalk with gradient + smooth curve
-    const grad = ctx.createLinearGradient(p.x, baseY, p.x, baseY - p.h);
-    grad.addColorStop(0, `hsl(${p.hue}, 60%, 18%)`);
-    grad.addColorStop(0.5, `hsl(${p.hue}, 55%, 30%)`);
-    grad.addColorStop(1, `hsl(${p.hue + 8}, 65%, 44%)`);
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = p.thickness;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    smoothStroke(ctx, pts);
-    // inner highlight stroke
-    ctx.strokeStyle = `hsla(${p.hue + 10}, 70%, 60%, 0.35)`;
-    ctx.lineWidth = Math.max(0.6, p.thickness * 0.35);
-    smoothStroke(ctx, pts);
-    // leaves alternating along stalk
-    for (let i = 2; i < pts.length - 1; i += 2) {
-      const side = (i % 4 === 0) ? 1 : -1;
-      const pt = pts[i];
-      const nxt = pts[i + 1];
-      const tang = Math.atan2(nxt.y - pt.y, nxt.x - pt.x);
-      const leafLen = 11 + (i / pts.length) * 6;
-      const leafW = 3 + (i / pts.length) * 1.5;
-      ctx.save();
-      ctx.translate(pt.x, pt.y);
-      ctx.rotate(tang + side * 1.0);
-      const lg = ctx.createLinearGradient(0, -leafW, 0, leafW);
-      lg.addColorStop(0, `hsl(${p.hue + 12}, 65%, 48%)`);
-      lg.addColorStop(1, `hsl(${p.hue}, 55%, 26%)`);
-      ctx.fillStyle = lg;
-      ctx.strokeStyle = `hsl(${p.hue}, 65%, 18%)`;
-      ctx.lineWidth = 0.6;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(leafLen * 0.3, -leafW, leafLen * 0.8, -leafW * 0.6, leafLen, 0);
-      ctx.bezierCurveTo(leafLen * 0.8, leafW * 0.6, leafLen * 0.3, leafW, 0, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // central vein
-      ctx.strokeStyle = `hsla(${p.hue}, 70%, 15%, 0.6)`;
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(1, 0);
-      ctx.lineTo(leafLen - 1, 0);
-      ctx.stroke();
-      ctx.restore();
-    }
-    // tip frond
-    const tip = pts[pts.length - 1];
-    ctx.fillStyle = `hsl(${p.hue + 15}, 70%, 55%)`;
-    ctx.beginPath();
-    ctx.ellipse(tip.x, tip.y, 4, 2.2, Math.sin(t * 0.001 + p.seed), 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function drawGrass(ctx, p, t) {
-    const baseY = state.sandY + 4;
-    const blades = p.bladeCount;
-    // base tuft shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.beginPath();
-    ctx.ellipse(p.x, baseY + 1, blades * 3.2, 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    for (let b = 0; b < blades; b++) {
-      const offset = (b - (blades - 1) / 2) * 4.5;
-      const heightMul = 0.55 + ((b * 13) % 7) / 10 + 0.25 * Math.sin(b + p.seed);
-      const h = p.h * Math.max(0.4, heightMul);
-      const sway = Math.sin(t * 0.0016 + p.seed + b * 0.55) * 7;
-      const tipX = p.x + offset + sway;
-      const tipY = baseY - h;
-      const grad = ctx.createLinearGradient(p.x + offset, baseY, tipX, tipY);
-      grad.addColorStop(0, `hsl(${p.hue - 10 + b * 3}, 55%, 22%)`);
-      grad.addColorStop(1, `hsl(${p.hue + 5 + b * 3}, 65%, 50%)`);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 1.8 + (b % 2) * 0.4;
-      ctx.lineCap = 'round';
-      // tapered blade — draw as filled curved sliver for a real grass look
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(p.x + offset - 1.2, baseY);
-      ctx.quadraticCurveTo(p.x + offset + sway * 0.4, baseY - h * 0.55, tipX, tipY);
-      ctx.quadraticCurveTo(p.x + offset + sway * 0.5 + 0.6, baseY - h * 0.55, p.x + offset + 1.2, baseY);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
-
-  function drawFanCoral(ctx, p, t) {
-    const baseY = state.sandY + 4;
-    // base
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.ellipse(p.x, baseY + 1, p.thickness * 3, 2.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const sway = Math.sin(t * 0.0009 + p.seed) * 5;
-    const trunkH = p.h * 0.35;
-    const trunkPts = [
-      { x: p.x, y: baseY },
-      { x: p.x + sway * 0.3, y: baseY - trunkH * 0.5 },
-      { x: p.x + sway, y: baseY - trunkH },
-    ];
-    const baseHue = p.hue + 20;
-    const stalkColor = `hsl(${baseHue}, 55%, 28%)`;
-    const tipColor = `hsl(${baseHue + 25}, 70%, 55%)`;
-    // trunk
-    ctx.strokeStyle = stalkColor;
-    ctx.lineWidth = p.thickness + 1;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    smoothStroke(ctx, trunkPts);
-    // 6 curving branches in a fan shape
-    const sx = p.x + sway;
-    const sy = baseY - trunkH;
-    const branches = 6;
-    for (let i = 0; i < branches; i++) {
-      const t2 = i / (branches - 1);
-      const angle = (-0.9 + t2 * 1.8) + Math.sin(t * 0.0014 + p.seed + i) * 0.06;
-      const len = p.h * (0.55 + (0.4 * Math.sin(i + p.seed)));
-      const bx = sx + Math.sin(angle) * len;
-      const by = sy - Math.cos(angle) * len;
-      const cx1 = sx + Math.sin(angle * 0.5) * len * 0.4;
-      const cy1 = sy - Math.cos(angle * 0.5) * len * 0.5;
-      const branchGrad = ctx.createLinearGradient(sx, sy, bx, by);
-      branchGrad.addColorStop(0, stalkColor);
-      branchGrad.addColorStop(1, tipColor);
-      ctx.strokeStyle = branchGrad;
-      ctx.lineWidth = p.thickness * 0.9;
-      ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.quadraticCurveTo(cx1, cy1, bx, by);
-      ctx.stroke();
-      // sub-branchlets
-      const subs = 3;
-      for (let s = 1; s <= subs; s++) {
-        const sk = s / (subs + 1);
-        const px = sx + (bx - sx) * sk + (cx1 - sx) * (sk * (1 - sk)) * 0.6;
-        const py = sy + (by - sy) * sk + (cy1 - sy) * (sk * (1 - sk)) * 0.6;
-        const subLen = 6 + (1 - sk) * 6;
-        const subAng = angle + (s % 2 === 0 ? 0.5 : -0.5);
-        const ex = px + Math.sin(subAng) * subLen;
-        const ey = py - Math.cos(subAng) * subLen;
-        ctx.strokeStyle = `hsl(${baseHue + 15}, 65%, ${42 + s * 4}%)`;
-        ctx.lineWidth = Math.max(0.8, p.thickness * 0.5);
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.quadraticCurveTo((px + ex) / 2, (py + ey) / 2 - 1, ex, ey);
-        ctx.stroke();
-      }
-      // polyp at tip
-      ctx.fillStyle = tipColor;
-      ctx.beginPath();
-      ctx.arc(bx, by, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `hsla(${baseHue + 35}, 80%, 75%, 0.7)`;
-      ctx.beginPath();
-      ctx.arc(bx - 0.6, by - 0.6, 0.9, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawBubbles(dt) {
-    const ctx = state.ctx;
-    for (let i = state.bubbles.length - 1; i >= 0; i--) {
-      const b = state.bubbles[i];
-      b.y -= b.vy * dt;
-      b.sway += dt * 2;
-      const x = b.x + Math.sin(b.sway) * 0.3 * b.swayAmp;
-      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(x, b.y, b.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      // highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.beginPath();
-      ctx.arc(x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.25, 0, Math.PI * 2);
-      ctx.fill();
-      if (b.y + b.r < 0) state.bubbles.splice(i, 1);
-    }
-    while (state.bubbles.length < 30) spawnBubble(false);
-  }
-
-  function drawFish(f, t) {
-    const ctx = state.ctx;
-    const s = f.size;
-    const W = s * (f.bodyW || 1);
-    const H = s * (f.bodyH || 0.55);
-    const base = toRgb(f.color);
-    const light = shade(base, 28);
-    const bright = shade(base, 50);
-    const dark = shade(base, -18);
-    const darker = shade(base, -40);
-    const belly = shade(base, 38);
-
-    ctx.save();
-    ctx.translate(f.x, f.y + Math.sin(t * 0.002 + f.bobSeed) * 3);
-    ctx.scale(Math.sign(f.vx) || 1, 1);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    const wag = Math.sin(t * 0.012 + f.wagSeed);
-    const finFlap = Math.sin(t * 0.008 + f.finSeed);
-
-    // ===== Tail (drawn first, behind body) =====
-    drawFishTail(ctx, f, W, H, wag, dark, darker, base, light);
-
-    // ===== Dorsal (top) fin — drawn behind body so it tucks in =====
-    drawFishDorsal(ctx, W, H, finFlap, dark, darker, light);
-
-    // ===== Body — smooth teardrop with belly highlight =====
-    const bodyGrad = ctx.createLinearGradient(0, -H, 0, H);
-    bodyGrad.addColorStop(0, bright);
-    bodyGrad.addColorStop(0.45, base);
-    bodyGrad.addColorStop(0.85, belly);
-    bodyGrad.addColorStop(1, light);
-    ctx.fillStyle = bodyGrad;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    // snout
-    ctx.moveTo(W * 0.95, -H * 0.08);
-    // top curve to tail peduncle
-    ctx.bezierCurveTo(W * 0.6, -H * 1.05, -W * 0.5, -H * 0.9, -W * 0.95, -H * 0.18);
-    // tail peduncle pinch
-    ctx.bezierCurveTo(-W * 1.05, -H * 0.05, -W * 1.05, H * 0.05, -W * 0.95, H * 0.18);
-    // belly back to snout
-    ctx.bezierCurveTo(-W * 0.5, H * 1.0, W * 0.6, H * 1.05, W * 0.95, H * 0.12);
-    // mouth tip rounding
-    ctx.bezierCurveTo(W * 1.02, H * 0.05, W * 1.02, -H * 0.05, W * 0.95, -H * 0.08);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // ===== Stripes / accents =====
-    if (f.stripeCount > 0) {
-      ctx.save();
-      ctx.beginPath();
-      // re-trace body as clip
-      ctx.moveTo(W * 0.95, -H * 0.08);
-      ctx.bezierCurveTo(W * 0.6, -H * 1.05, -W * 0.5, -H * 0.9, -W * 0.95, -H * 0.18);
-      ctx.bezierCurveTo(-W * 1.05, -H * 0.05, -W * 1.05, H * 0.05, -W * 0.95, H * 0.18);
-      ctx.bezierCurveTo(-W * 0.5, H * 1.0, W * 0.6, H * 1.05, W * 0.95, H * 0.12);
-      ctx.bezierCurveTo(W * 1.02, H * 0.05, W * 1.02, -H * 0.05, W * 0.95, -H * 0.08);
-      ctx.closePath();
-      ctx.clip();
-      ctx.fillStyle = f.stripeColor;
-      for (let i = 0; i < f.stripeCount; i++) {
-        const cx = W * (0.55 - i * 0.45);
-        const sw = W * 0.14;
-        ctx.beginPath();
-        ctx.moveTo(cx + sw, -H * 1.1);
-        ctx.bezierCurveTo(cx + sw * 0.6, 0, cx + sw * 0.6, 0, cx + sw, H * 1.1);
-        ctx.lineTo(cx - sw, H * 1.1);
-        ctx.bezierCurveTo(cx - sw * 0.6, 0, cx - sw * 0.6, 0, cx - sw, -H * 1.1);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-    if (f.accent === 'tangPatch') {
-      // a curved yellow patch along the back
-      ctx.save();
-      ctx.fillStyle = f.stripeColor;
-      ctx.beginPath();
-      ctx.moveTo(-W * 0.55, -H * 0.55);
-      ctx.bezierCurveTo(-W * 0.2, -H * 0.95, W * 0.45, -H * 0.95, W * 0.65, -H * 0.4);
-      ctx.bezierCurveTo(W * 0.3, -H * 0.55, -W * 0.15, -H * 0.65, -W * 0.55, -H * 0.3);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    } else if (f.accent === 'neonStripe') {
-      // a glowing horizontal stripe through the middle
-      ctx.save();
-      const gg = ctx.createLinearGradient(0, -2, 0, 2);
-      gg.addColorStop(0, 'rgba(0,0,0,0)');
-      gg.addColorStop(0.5, f.stripeColor);
-      gg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = gg;
-      ctx.beginPath();
-      ctx.moveTo(W * 0.7, -H * 0.05);
-      ctx.bezierCurveTo(W * 0.3, -H * 0.18, -W * 0.5, -H * 0.18, -W * 0.85, -H * 0.05);
-      ctx.bezierCurveTo(-W * 0.5, H * 0.18, W * 0.3, H * 0.18, W * 0.7, H * 0.05);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    } else if (f.accent === 'spots') {
-      ctx.fillStyle = f.stripeColor;
-      for (let i = 0; i < 5; i++) {
-        const sx = -W * 0.5 + i * (W * 0.25);
-        const sy = (i % 2 ? -1 : 1) * H * 0.25;
-        ctx.beginPath();
-        ctx.arc(sx, sy, s * 0.07, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // ===== Pectoral fin (side, animated flap) =====
-    ctx.save();
-    ctx.translate(W * 0.25, H * 0.15);
-    ctx.rotate(0.35 + finFlap * 0.18);
-    const pectGrad = ctx.createLinearGradient(0, 0, -s * 0.4, s * 0.5);
-    pectGrad.addColorStop(0, light);
-    pectGrad.addColorStop(1, dark);
-    ctx.fillStyle = pectGrad;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(-s * 0.15, s * 0.25, -s * 0.4, s * 0.4, -s * 0.45, s * 0.55);
-    ctx.bezierCurveTo(-s * 0.25, s * 0.5, -s * 0.05, s * 0.35, 0, s * 0.15);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // fin rays
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.moveTo(0, s * 0.05 + i * s * 0.04);
-      ctx.bezierCurveTo(-s * 0.1, s * 0.18 + i * 0.03, -s * 0.25, s * 0.32 + i * 0.03, -s * 0.4, s * 0.45);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // ===== Anal / belly fin (small, near rear belly) =====
-    ctx.save();
-    ctx.fillStyle = dark;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(-W * 0.45, H * 0.65);
-    ctx.bezierCurveTo(-W * 0.5, H * 1.05, -W * 0.2, H * 1.1, -W * 0.1, H * 0.7);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // ===== Gill mark =====
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(W * 0.42, -H * 0.4);
-    ctx.bezierCurveTo(W * 0.36, -H * 0.05, W * 0.36, H * 0.05, W * 0.42, H * 0.4);
-    ctx.stroke();
-
-    // ===== Mouth (small curve) =====
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(W * 0.92, H * 0.05);
-    ctx.quadraticCurveTo(W * 0.84, H * 0.18, W * 0.74, H * 0.12);
-    ctx.stroke();
-
-    // ===== Eye =====
-    const eyeX = W * 0.62;
-    const eyeY = -H * 0.18;
-    const eyeR = Math.max(2, s * 0.18);
-    // socket halo
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.beginPath();
-    ctx.arc(eyeX, eyeY, eyeR + 0.8, 0, Math.PI * 2);
-    ctx.fill();
-    // white
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
-    ctx.fill();
-    // iris
-    ctx.fillStyle = '#1a232f';
-    ctx.beginPath();
-    ctx.arc(eyeX + eyeR * 0.18, eyeY, eyeR * 0.7, 0, Math.PI * 2);
-    ctx.fill();
-    // pupil
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.arc(eyeX + eyeR * 0.25, eyeY, eyeR * 0.42, 0, Math.PI * 2);
-    ctx.fill();
-    // shine
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(eyeX + eyeR * 0.45, eyeY - eyeR * 0.4, eyeR * 0.22, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(eyeX - eyeR * 0.3, eyeY + eyeR * 0.35, eyeR * 0.1, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  function drawFishTail(ctx, f, W, H, wag, dark, darker, base, light) {
-    ctx.save();
-    // tail peduncle anchor + small wag rotation for fluid motion
-    ctx.translate(-W * 0.95, 0);
-    ctx.rotate(wag * 0.25);
-    const grad = ctx.createLinearGradient(0, -H, 0, H);
-    grad.addColorStop(0, dark);
-    grad.addColorStop(0.5, base);
-    grad.addColorStop(1, dark);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 0.9;
-    if (f.tailStyle === 'flowy') {
-      // long flowing fan tail
-      ctx.beginPath();
-      ctx.moveTo(0, -H * 0.2);
-      ctx.bezierCurveTo(-W * 0.8, -H * 1.4, -W * 1.2, -H * 1.2, -W * 1.3, -H * 0.2);
-      ctx.bezierCurveTo(-W * 1.4, 0, -W * 1.4, 0, -W * 1.3, H * 0.2);
-      ctx.bezierCurveTo(-W * 1.2, H * 1.2, -W * 0.8, H * 1.4, 0, H * 0.2);
-      ctx.bezierCurveTo(-W * 0.2, 0, -W * 0.2, 0, 0, -H * 0.2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      // forked tail
-      ctx.beginPath();
-      ctx.moveTo(0, -H * 0.15);
-      ctx.bezierCurveTo(-W * 0.4, -H * 0.6, -W * 0.7, -H * 1.0, -W * 0.85, -H * 0.95);
-      ctx.bezierCurveTo(-W * 0.55, -H * 0.4, -W * 0.4, -H * 0.15, -W * 0.3, 0);
-      ctx.bezierCurveTo(-W * 0.4, H * 0.15, -W * 0.55, H * 0.4, -W * 0.85, H * 0.95);
-      ctx.bezierCurveTo(-W * 0.7, H * 1.0, -W * 0.4, H * 0.6, 0, H * 0.15);
-      ctx.bezierCurveTo(-W * 0.05, 0, -W * 0.05, 0, 0, -H * 0.15);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-    // ribs / rays along the tail for detail
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 0.6;
-    for (let i = 0; i < 4; i++) {
-      const yy = (i - 1.5) * H * 0.3;
-      ctx.beginPath();
-      ctx.moveTo(0, yy * 0.4);
-      ctx.lineTo(-W * 0.8, yy);
-      ctx.stroke();
-    }
-    // highlight along upper edge
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(-W * 0.05, -H * 0.18);
-    ctx.bezierCurveTo(-W * 0.35, -H * 0.5, -W * 0.6, -H * 0.85, -W * 0.78, -H * 0.85);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawFishDorsal(ctx, W, H, finFlap, dark, darker, light) {
-    ctx.save();
-    const grad = ctx.createLinearGradient(0, -H * 1.4, 0, -H * 0.3);
-    grad.addColorStop(0, light);
-    grad.addColorStop(1, dark);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = darker;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    // ride along the back from front-third to tail peduncle
-    ctx.moveTo(W * 0.45, -H * 0.55);
-    ctx.bezierCurveTo(W * 0.3, -H * 1.25 + finFlap * 1.2, W * 0.0, -H * 1.2, -W * 0.25, -H * 1.0 + finFlap * 0.6);
-    ctx.bezierCurveTo(-W * 0.45, -H * 0.85, -W * 0.7, -H * 0.7, -W * 0.85, -H * 0.4);
-    ctx.bezierCurveTo(-W * 0.5, -H * 0.55, 0, -H * 0.55, W * 0.45, -H * 0.55);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // rays inside the dorsal
-    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i < 6; i++) {
-      const xx = W * 0.35 - i * W * 0.22;
-      ctx.beginPath();
-      ctx.moveTo(xx, -H * 0.55);
-      ctx.lineTo(xx + W * 0.02, -H * (0.85 + 0.15 * Math.sin(i)) + finFlap * 0.8);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function toRgb(hex) {
-    if (hex.startsWith('rgb')) return hex;
-    const v = hex.replace('#', '');
-    const r = parseInt(v.substr(0, 2), 16);
-    const g = parseInt(v.substr(2, 2), 16);
-    const b = parseInt(v.substr(4, 2), 16);
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-
-  function drawLobster(L, t) {
-    const ctx = state.ctx;
-    const c = cpuToColor(L.cpu);
-    const cDark = shade(c, -30);
-    const cDarker = shade(c, -55);
-    const cLight = shade(c, 28);
-    const cBright = shade(c, 55);
-
-    ctx.save();
-    const bob = Math.sin(t * 0.018) * 1.5;
-    ctx.translate(L.x, L.y + bob);
-    ctx.scale(L.facing, 1);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // ----- ground shadow -----
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.beginPath();
-    ctx.ellipse(-6, 22, 66, 5.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ----- antennae (behind body) -----
-    drawAntennae(ctx, t, cDarker, cDark);
-
-    // ----- tail (behind body, drawn back-to-front) -----
-    drawTail(ctx, t, c, cDark, cDarker, cLight);
-
-    // ----- walking legs (under body) -----
-    drawLegs(ctx, t, cDark, cDarker);
-
-    // ----- carapace + head -----
-    drawCarapace(ctx, t, c, cDark, cDarker, cLight, cBright);
-    drawHead(ctx, t, c, cDark, cDarker, cLight, cBright);
-
-    // ----- claws (in front of body) -----
-    drawClaw(ctx, 28, -2, 0.18, c, cDark, cDarker, cLight, cBright, t, 0);
-    drawClaw(ctx, 30, 8, 0.42, c, cDark, cDarker, cLight, cBright, t, 0.9);
-
-    ctx.restore();
-  }
-
-  function drawTail(ctx, t, c, cDark, cDarker, cLight) {
-    const wiggle = Math.sin(t * 0.005) * 0.05;
-    ctx.save();
-    ctx.rotate(wiggle);
-
-    // segments: from the rear-most outward back toward the body
-    const segs = [
-      { cx: -68, w: 11, h: 12.5 },
-      { cx: -58, w: 12.5, h: 13.5 },
-      { cx: -47, w: 13.5, h: 14.5 },
-      { cx: -35, w: 14.5, h: 15.5 },
-      { cx: -22, w: 16, h: 17 },
-    ];
-
-    // tail fan first (behind everything)
-    drawTailFan(ctx, -82, 0, c, cDark, cDarker, cLight);
-
-    for (let i = 0; i < segs.length; i++) {
-      const s = segs[i];
-      const grad = ctx.createLinearGradient(s.cx, -s.h, s.cx, s.h);
-      grad.addColorStop(0, cLight);
-      grad.addColorStop(0.45, c);
-      grad.addColorStop(1, cDark);
-      ctx.fillStyle = grad;
-      ctx.strokeStyle = cDarker;
-      ctx.lineWidth = 1.2;
-      // rounded shell ring — like a flat C cross-section
-      ctx.beginPath();
-      ctx.moveTo(s.cx - s.w * 0.55, -s.h * 0.78);
-      ctx.bezierCurveTo(s.cx - s.w * 0.2, -s.h * 1.05, s.cx + s.w * 0.45, -s.h * 1.05, s.cx + s.w * 0.55, -s.h * 0.78);
-      ctx.bezierCurveTo(s.cx + s.w * 0.78, -s.h * 0.2, s.cx + s.w * 0.78, s.h * 0.2, s.cx + s.w * 0.55, s.h * 0.78);
-      ctx.bezierCurveTo(s.cx + s.w * 0.45, s.h * 1.05, s.cx - s.w * 0.2, s.h * 1.05, s.cx - s.w * 0.55, s.h * 0.78);
-      ctx.bezierCurveTo(s.cx - s.w * 0.78, s.h * 0.2, s.cx - s.w * 0.78, -s.h * 0.2, s.cx - s.w * 0.55, -s.h * 0.78);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // top highlight ridge
-      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(s.cx - s.w * 0.35, -s.h * 0.55);
-      ctx.quadraticCurveTo(s.cx + s.w * 0.1, -s.h * 0.78, s.cx + s.w * 0.35, -s.h * 0.55);
-      ctx.stroke();
-      // swimmeret pair (small paddles below segment), skip the last (near body)
-      if (i < segs.length - 1) {
-        drawSwimmeret(ctx, s.cx, s.h * 0.82, t, i, c, cDark, cDarker);
-      }
-    }
-    ctx.restore();
-  }
-
-  function drawSwimmeret(ctx, x, y, t, i, c, cDark, cDarker) {
-    const flick = Math.sin(t * 0.012 + i * 0.7) * 0.25;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(0.2 + flick);
-    ctx.fillStyle = cDark;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 3, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawTailFan(ctx, x, y, c, cDark, cDarker, cLight) {
-    // 5 flukes spread fanwise off the back of the tail
-    const flukes = [
-      { angle: -0.65, len: 22, w: 7 },
-      { angle: -0.32, len: 26, w: 8 },
-      { angle: 0,     len: 28, w: 9 },
-      { angle: 0.32,  len: 26, w: 8 },
-      { angle: 0.65,  len: 22, w: 7 },
-    ];
-    for (const f of flukes) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(f.angle);
-      const grad = ctx.createLinearGradient(0, -f.w, 0, f.w);
-      grad.addColorStop(0, cLight);
-      grad.addColorStop(0.5, c);
-      grad.addColorStop(1, cDark);
-      ctx.fillStyle = grad;
-      ctx.strokeStyle = cDarker;
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.moveTo(2, -f.w * 0.5);
-      ctx.bezierCurveTo(-f.len * 0.4, -f.w * 1.05, -f.len * 0.9, -f.w * 0.4, -f.len, 0);
-      ctx.bezierCurveTo(-f.len * 0.9, f.w * 0.4, -f.len * 0.4, f.w * 1.05, 2, f.w * 0.5);
-      ctx.bezierCurveTo(0, 0, 0, 0, 2, -f.w * 0.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // ribs
-      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-      ctx.lineWidth = 0.7;
-      for (let r = 0; r < 3; r++) {
-        const off = (r - 1) * 1.6;
-        ctx.beginPath();
-        ctx.moveTo(0, off);
-        ctx.lineTo(-f.len * 0.85, off * 0.6);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-  }
-
-  function drawLegs(ctx, t, cDark, cDarker) {
-    // 4 pairs of walking legs (rear of the 5 decapod pairs; front pair is the claws)
-    for (let i = 0; i < 4; i++) {
-      const phase = t * 0.018 + i * 1.25;
-      const lift = Math.max(0, Math.sin(phase)) * 5;
-      const lx = -12 + i * 8.5;
-      // dark outer stroke
-      ctx.strokeStyle = cDarker;
-      ctx.lineWidth = 3.2;
-      ctx.beginPath();
-      ctx.moveTo(lx, 4);
-      ctx.bezierCurveTo(lx - 2, 10, lx - 5, 16 - lift, lx + 1, 22 - lift);
-      ctx.stroke();
-      // mid inner stroke for joints depth
-      ctx.strokeStyle = cDark;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(lx, 4);
-      ctx.bezierCurveTo(lx - 2, 10, lx - 5, 16 - lift, lx + 1, 22 - lift);
-      ctx.stroke();
-      // tiny foot dot
-      ctx.fillStyle = cDarker;
-      ctx.beginPath();
-      ctx.arc(lx + 1, 22 - lift, 1.3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawCarapace(ctx, t, c, cDark, cDarker, cLight, cBright) {
-    const grad = ctx.createRadialGradient(-6, -18, 3, 0, -8, 34);
-    grad.addColorStop(0, cBright);
-    grad.addColorStop(0.4, cLight);
-    grad.addColorStop(1, c);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    // carapace outline as a smooth bezier blob
-    ctx.moveTo(-22, -4);
-    ctx.bezierCurveTo(-30, -14, -22, -28, 0, -28);
-    ctx.bezierCurveTo(22, -28, 32, -16, 28, -4);
-    ctx.bezierCurveTo(28, 6, 18, 10, 0, 10);
-    ctx.bezierCurveTo(-18, 10, -22, 4, -22, -4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // segment ridges (three sweeping curves)
-    ctx.strokeStyle = cDark;
-    ctx.lineWidth = 1.1;
-    for (let i = 0; i < 3; i++) {
-      const offX = -14 + i * 12;
-      ctx.beginPath();
-      ctx.moveTo(offX - 1, -24 + i * 0.5);
-      ctx.bezierCurveTo(offX + 2, -14 + i, offX + 2, 0 + i, offX, 8 - i * 0.5);
-      ctx.stroke();
-    }
-    // top highlight
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(-18, -16);
-    ctx.bezierCurveTo(-8, -28, 10, -28, 22, -16);
-    ctx.stroke();
-    // speckles (carapace texture)
-    ctx.fillStyle = cDarker;
-    for (let i = 0; i < 6; i++) {
-      const sx = -14 + i * 5;
-      const sy = -14 + (i % 2) * 4;
-      ctx.beginPath();
-      ctx.arc(sx, sy, 0.7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawHead(ctx, t, c, cDark, cDarker, cLight, cBright) {
-    // head capsule
-    const grad = ctx.createRadialGradient(18, -18, 2, 22, -12, 18);
-    grad.addColorStop(0, cBright);
-    grad.addColorStop(0.5, cLight);
-    grad.addColorStop(1, c);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(8, -22);
-    ctx.bezierCurveTo(18, -28, 32, -24, 36, -14);
-    ctx.bezierCurveTo(38, -6, 32, 2, 22, 4);
-    ctx.bezierCurveTo(12, 4, 6, -2, 8, -22);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // rostrum (forward horn with three small teeth)
-    ctx.fillStyle = cDark;
-    ctx.strokeStyle = cDarker;
-    ctx.beginPath();
-    ctx.moveTo(30, -22);
-    ctx.bezierCurveTo(40, -22, 44, -16, 38, -10);
-    ctx.lineTo(28, -14);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // rostrum teeth
-    ctx.beginPath();
-    ctx.moveTo(33, -23); ctx.lineTo(34, -27); ctx.lineTo(35, -23);
-    ctx.moveTo(36, -22); ctx.lineTo(37, -25); ctx.lineTo(38, -22);
-    ctx.fill();
-    ctx.stroke();
-    // ----- eye on a little stalk -----
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(26, -16);
-    ctx.quadraticCurveTo(27, -22, 29, -23);
-    ctx.stroke();
-    // eye white
-    const eyeX = 29.5, eyeY = -23;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-    // iris
-    const blink = (Math.sin(t * 0.001) > 0.985) ? 0.2 : 1;
-    ctx.fillStyle = '#1a1a26';
-    ctx.beginPath();
-    ctx.ellipse(eyeX + 0.8, eyeY, 2.6, 2.6 * blink, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // pupil
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(eyeX + 1.1, eyeY, 1.4, 1.4 * blink, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // eye shine
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(eyeX + 1.8, eyeY - 0.9, 0.9, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(eyeX - 0.6, eyeY + 0.8, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    // cute smile
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(30, -8, 3.5, 0.2, Math.PI - 0.2);
-    ctx.stroke();
-    // blush
-    ctx.fillStyle = 'rgba(255, 140, 140, 0.35)';
-    ctx.beginPath();
-    ctx.ellipse(33, -11, 2.5, 1.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function drawAntennae(ctx, t, cDarker, cDark) {
-    const sway = Math.sin(t * 0.003) * 5;
-    const sway2 = Math.cos(t * 0.0035) * 4;
-    ctx.lineCap = 'round';
-
-    // long antenna 1 — sweeping forward with a curl
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(32, -22);
-    ctx.bezierCurveTo(54, -32 + sway, 78, -22 + sway * 0.6, 102, -32 + sway * 0.4);
-    ctx.stroke();
-    ctx.strokeStyle = cDark;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(32, -22);
-    ctx.bezierCurveTo(54, -32 + sway, 78, -22 + sway * 0.6, 102, -32 + sway * 0.4);
-    ctx.stroke();
-
-    // long antenna 2 — upward sweep
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(30, -23);
-    ctx.bezierCurveTo(48, -38 + sway2, 64, -52 + sway2, 86, -58 + sway2 * 0.6);
-    ctx.stroke();
-
-    // shorter antennules (in front of head)
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    ctx.moveTo(34, -18);
-    ctx.quadraticCurveTo(46, -22 + sway * 0.4, 56, -18 + sway * 0.3);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(33, -19);
-    ctx.quadraticCurveTo(42, -26 - sway2 * 0.3, 50, -28 - sway2 * 0.4);
-    ctx.stroke();
-
-    // little segment ticks on the main antenna for detail
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 0.6;
-    for (let i = 1; i < 8; i++) {
-      const k = i / 8;
-      const x = 32 + (102 - 32) * k;
-      const y = -22 + (sway - 10) * Math.sin(k * Math.PI);
-      ctx.beginPath();
-      ctx.moveTo(x, y - 1.6);
-      ctx.lineTo(x, y + 1.6);
-      ctx.stroke();
-    }
-  }
-
-  function drawClaw(ctx, x0, y0, baseAngle, c, cDark, cDarker, cLight, cBright, t, phase) {
-    const clack = Math.sin(t * 0.006 + phase) * 0.2;
-    ctx.save();
-    ctx.translate(x0, y0);
-    ctx.rotate(baseAngle);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // ----- merus (upper arm / shoulder bulb) -----
-    const merusGrad = ctx.createRadialGradient(3, 0, 1, 8, 3, 10);
-    merusGrad.addColorStop(0, cLight);
-    merusGrad.addColorStop(1, c);
-    ctx.fillStyle = merusGrad;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.ellipse(8, 3, 8, 4.5, 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // ----- carpus (forearm / wrist) -----
-    const carpusGrad = ctx.createLinearGradient(14, 0, 30, 14);
-    carpusGrad.addColorStop(0, cLight);
-    carpusGrad.addColorStop(1, c);
-    ctx.fillStyle = carpusGrad;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.ellipse(22, 10, 13, 6.5, 0.35, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // small spike on the wrist
-    ctx.fillStyle = cDarker;
-    ctx.beginPath();
-    ctx.moveTo(28, 4);
-    ctx.lineTo(31, 1);
-    ctx.lineTo(30, 6);
-    ctx.closePath();
-    ctx.fill();
-
-    // ----- knuckle joint -----
-    ctx.fillStyle = cDark;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(32, 14, 3.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // ----- chela (the big pincer) -----
-    ctx.save();
-    ctx.translate(36, 14);
-    ctx.rotate(0.1);
-
-    const palmGrad = ctx.createRadialGradient(-4, -4, 2, 2, 2, 20);
-    palmGrad.addColorStop(0, cBright);
-    palmGrad.addColorStop(0.45, cLight);
-    palmGrad.addColorStop(1, c);
-
-    // palm (manus) — chunky teardrop with smooth bezier outline
-    ctx.fillStyle = palmGrad;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-9, -9);
-    ctx.bezierCurveTo(-2, -14, 14, -12, 18, -2);
-    ctx.bezierCurveTo(22, 8, 14, 14, 4, 14);
-    ctx.bezierCurveTo(-8, 14, -12, 6, -9, -9);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // palm highlight sweep
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(-6, -6);
-    ctx.bezierCurveTo(2, -11, 12, -10, 15, -3);
-    ctx.stroke();
-
-    // bumps on palm for texture
-    ctx.fillStyle = cDarker;
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(-4 + i * 4, 4 + (i % 2) * 2, 0.7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // ----- upper finger (dactyl, movable) -----
-    ctx.save();
-    ctx.translate(14, -5);
-    ctx.rotate(-0.35 - clack);
-    ctx.fillStyle = palmGrad;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(0, -4);
-    ctx.bezierCurveTo(8, -7, 18, -5, 24, -1);
-    ctx.bezierCurveTo(22, 2, 12, 3, 0, 3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // tip
-    ctx.fillStyle = cDarker;
-    ctx.beginPath();
-    ctx.moveTo(22, -1);
-    ctx.lineTo(26, 0);
-    ctx.lineTo(22, 2);
-    ctx.closePath();
-    ctx.fill();
-    // serration teeth on inside edge
-    ctx.fillStyle = cDarker;
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(5 + i * 4, 2.5, 0.6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // ----- lower finger (propodus, fixed) -----
-    ctx.save();
-    ctx.translate(14, 6);
-    ctx.rotate(0.35 + clack);
-    ctx.fillStyle = palmGrad;
-    ctx.strokeStyle = cDarker;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(0, -2);
-    ctx.bezierCurveTo(8, -1, 18, 1, 22, 4);
-    ctx.bezierCurveTo(18, 7, 10, 7, 0, 5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // tip
-    ctx.fillStyle = cDarker;
-    ctx.beginPath();
-    ctx.moveTo(20, 3);
-    ctx.lineTo(24, 5);
-    ctx.lineTo(20, 6);
-    ctx.closePath();
-    ctx.fill();
-    // serration teeth on top edge (facing the other finger)
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(5 + i * 4, -0.6, 0.55, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-
-    ctx.restore();
-    ctx.restore();
-  }
-
-  function step(now) {
-    if (!state.running) return;
-    const t = now - state.startTime;
-    const dt = Math.min(0.05, (now - (state.lastFrame || now)) / 1000);
-    state.lastFrame = now;
-    const ctx = state.ctx;
-
-    ctx.clearRect(0, 0, state.w, state.h);
-    drawBackground(t);
-    drawPlants(t);
-    drawRocks();
-
-    // fish update + draw
-    for (const f of state.fish) {
-      f.x += f.vx * dt;
-      if (f.x < f.size + 8) { f.x = f.size + 8; f.vx = Math.abs(f.vx); }
-      if (f.x > state.w - f.size - 8) { f.x = state.w - f.size - 8; f.vx = -Math.abs(f.vx); }
-      drawFish(f, t);
-    }
-
-    drawBubbles(dt);
-
-    // lobster update — iterate all agents, drop stale ones
-    const margin = 70;
-    let hudDirty = false;
-    for (const [pid, L] of state.lobsters) {
-      if (now - L.lastSeen > AGENT_TIMEOUT_MS) {
-        state.lobsters.delete(pid);
-        hudDirty = true;
-        continue;
-      }
-      L.x += L.vx * dt * L.facing;
-      if (L.x < margin) { L.x = margin; L.facing = 1; }
-      if (L.x > state.w - margin) { L.x = state.w - margin; L.facing = -1; }
-      drawLobster(L, t);
-    }
-    if (hudDirty) renderHud();
-
-    state.rafId = requestAnimationFrame(step);
-  }
-
-  function start() {
-    if (state.running) return;
-    const canvas = document.getElementById('tankCanvas');
-    if (!canvas) return;
-    state.canvas = canvas;
-    state.ctx = canvas.getContext('2d');
-    resize();
-    if (!state.fish.length) {
-      initEntities();
-    }
-    renderHud();
-    state.running = true;
-    state.lastFrame = performance.now();
-    state.startTime = performance.now();
-    state.rafId = requestAnimationFrame(step);
-    // startMock();
-    window.addEventListener('resize', onResize);
-  }
-
-  function stop() {
-    state.running = false;
-    if (state.rafId) cancelAnimationFrame(state.rafId);
-    state.rafId = 0;
-    stopMock();
-    window.removeEventListener('resize', onResize);
-  }
-
-  function onResize() {
-    if (!state.running) return;
-    resize();
-  }
-
-  // ----- Mock data loop (per the data contract in TASK.md) -----
-  function startMock() {
-    stopMock();
-    state.mockId = setInterval(tickMock, 250);
-    tickMock();
-  }
-  function stopMock() {
-    if (state.mockId) clearInterval(state.mockId);
-    state.mockId = null;
-  }
-  const MOCK_AGENTS = [
-    { pid: 4821, phase: 0.0,  freq: 0.25, amp: 35, base: 50 },
-    { pid: 5102, phase: 1.3,  freq: 0.40, amp: 22, base: 28 },
-    { pid: 6310, phase: 2.7,  freq: 0.18, amp: 40, base: 55 },
-  ];
-  function tickMock() {
-    const t = performance.now() / 1000;
-    for (const a of MOCK_AGENTS) {
-      const total = clamp(a.base + a.amp * Math.sin(t * a.freq + a.phase) + 8 * Math.sin(t * 0.9 + a.phase), 0, 100);
-      const userFrac = 0.55 + 0.3 * Math.sin(t * 0.45 + a.phase);
-      const user = clamp(total * userFrac, 0, 100);
-      const sys = clamp(total - user, 0, 100);
-      onCpuSample({
-        pid: a.pid,
-        is_running: true,
-        openclaw_cpu_user: +user.toFixed(1),
-        openclaw_cpu_system: +sys.toFixed(1),
-        timestamp: Math.floor(Date.now() / 1000),
-      });
-    }
-  }
-
-  function renderHud() {
-    const listEl = document.getElementById('tankHudList');
-    const emptyEl = document.getElementById('tankHudEmpty');
-    if (!listEl) return;
-    const pids = Array.from(state.lobsters.keys()).sort((a, b) => a - b);
-    if (emptyEl) emptyEl.classList.toggle('hidden', pids.length > 0);
-
-    const seen = new Set();
-    for (const pid of pids) {
-      const L = state.lobsters.get(pid);
-      seen.add(String(pid));
-      let row = listEl.querySelector('[data-pid="' + pid + '"]');
-      if (!row) {
-        row = document.createElement('div');
-        row.className = 'tank-hud-agent';
-        row.dataset.pid = String(pid);
-        row.innerHTML =
-          '<div class="tank-hud-row">' +
-            '<span class="tank-hud-label">pid <span class="js-pid"></span></span>' +
-            '<span class="tank-hud-value js-cpu">0.0%</span>' +
-          '</div>' +
-          '<div class="tank-hud-bar"><div class="tank-hud-bar-fill js-bar"></div></div>' +
-          '<div class="tank-hud-row tank-hud-sub">' +
-            '<span>user <span class="js-user">0.0</span></span>' +
-            '<span>sys <span class="js-sys">0.0</span></span>' +
-          '</div>';
-        listEl.appendChild(row);
-        row.querySelector('.js-pid').textContent = pid;
-      }
-      row.querySelector('.js-cpu').textContent = L.cpu.toFixed(1) + '%';
-      row.querySelector('.js-bar').style.width = L.cpu.toFixed(1) + '%';
-      row.querySelector('.js-user').textContent = L.cpuUser.toFixed(1);
-      row.querySelector('.js-sys').textContent = L.cpuSys.toFixed(1);
-    }
-    // remove stale rows
-    listEl.querySelectorAll('.tank-hud-agent').forEach(function (row) {
-      if (!seen.has(row.dataset.pid)) row.remove();
-    });
-  }
-
-  // Hook Person 3 can call: pass either a single sample or an array of samples.
-  function onCpuSample(input) {
-    const samples = Array.isArray(input) ? input : [input];
-    for (const sample of samples) {
-      if (!sample || sample.pid == null) continue;
-      const pid = sample.pid;
-      if (sample.is_running === false) {
-        state.lobsters.delete(pid);
-        continue;
-      }
-      let L = state.lobsters.get(pid);
-      if (!L) {
-        if (!state.canvas) continue; // tank not initialized — drop samples until opened
-        L = spawnLobster(pid);
-      }
-      L.cpuUser = sample.openclaw_cpu_user || 0;
-      L.cpuSys = sample.openclaw_cpu_system || 0;
-      L.cpu = clamp(L.cpuUser + L.cpuSys, 0, 100);
-      L.lastSeen = performance.now();
-    }
-    renderHud();
-  }
-
-  // Expose hooks for Person 3 on integration day.
-  window.renderCpuProfiler = function (bufferOrSample) {
-    onCpuSample(bufferOrSample);
-  };
-  window.startCpuProfilerMock = startMock;
-  window.stopCpuProfilerMock = stopMock;
-
-  // Wire up tab switching — script runs at end of body so elements exist
-  function wireNav() {
-    document.querySelectorAll('.nav-item').forEach(function (item) {
-      item.addEventListener('click', function () {
-        if (item.dataset.page === 'tank') {
-          // start on next tick so the page becomes visible & gets a real size
-          setTimeout(start, 0);
-        } else if (state.running) {
-          stop();
-        }
-      });
-    });
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wireNav);
-  } else {
-    wireNav();
-  }
-})();
-const lwBuffer = []
-const LW_MAX = 50
-
-function lwPushData(data) {
-  lwBuffer.push(data)
-  if (lwBuffer.length > LW_MAX) lwBuffer.shift()
-  if (typeof window.renderCpuProfiler === 'function') {
-    window.renderCpuProfiler(data)
-  }
+  });
+
+  overlay.addEventListener('mouseleave', () => {
+    tooltip.style.opacity = '0';
+  });
 }
 
-// WebSocket 連線人員 2 的 server
-let lwSocket = null
-
-function lwStartReal() {
-  const token = getStoredToken()
-  lwSocket = new WebSocket('ws://localhost:7000?token=' + encodeURIComponent(token))
-
-  lwSocket.onopen = () => {
-    console.log('🦞 WebSocket 連線成功')
-  }
-
-  lwSocket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data)
-      if (data.pid && data.openclaw_cpu_user !== undefined) {
-        lwPushData(data)
-      }
-    } catch (e) {
-      console.error('JSON 解析失敗：', e)
+function startCpuProfilerMock() {
+  setInterval(() => {
+    const newData = {
+      pid: 4821,
+      is_running: true,
+      openclaw_cpu_user: Math.random() * 40 + 10,
+      openclaw_cpu_system: Math.random() * 15 + 5,
+      timestamp: Date.now()
+    };
+    
+    cpuProfilerData.push(newData);
+    if (cpuProfilerData.length > CPU_PROFILER_MAX_POINTS) {
+      cpuProfilerData.shift();
     }
-  }
-
-  lwSocket.onerror = () => {
-    console.error('🦞 WebSocket 錯誤')
-  }
-
-  lwSocket.onclose = () => {
-    console.log('🦞 WebSocket 斷線')
-  }
+    
+    renderCpuProfiler(cpuProfilerData);
+  }, 1000);
 }
 
-lwStartReal()
+// Initial mock data to avoid empty start
+for (let i = 0; i < CPU_PROFILER_MAX_POINTS; i++) {
+  cpuProfilerData.push({
+    pid: 4821,
+    is_running: true,
+    openclaw_cpu_user: 0,
+    openclaw_cpu_system: 0,
+    timestamp: Date.now() - (CPU_PROFILER_MAX_POINTS - i) * 1000
+  });
+}
+startCpuProfilerMock();
 </script>
 </body>
 </html>

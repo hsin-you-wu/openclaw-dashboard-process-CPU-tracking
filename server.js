@@ -2,9 +2,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { exec, spawn } = require('child_process');
+const { exec } = require('child_process');
 const crypto = require('crypto');
-const WebSocket = require('ws');
 
 const PORT = parseInt(process.env.DASHBOARD_PORT || '7000');
 const OPENCLAW_DIR = process.env.OPENCLAW_DIR || path.join(os.homedir(), '.openclaw');
@@ -296,7 +295,7 @@ function setSecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self' ws://localhost:7000");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:");
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 }
@@ -2628,59 +2627,6 @@ const server = http.createServer((req, res) => {
     res.end('Error loading dashboard');
   }
 });
-
-const wss = new WebSocket.Server({ server });
-
-const wsClients = new Set();
-
-function generateProcessMetrics() {
-  return {
-    pid: 4821,
-    is_running: true,
-    openclaw_cpu_user: parseFloat((10 + Math.random() * 15).toFixed(1)),
-    openclaw_cpu_system: parseFloat((2 + Math.random() * 8).toFixed(1)),
-    timestamp: Math.floor(Date.now() / 1000)
-  };
-}
-
-wss.on('connection', (ws) => {
-  wsClients.add(ws);
-  console.log(`WebSocket client connected. Total clients: ${wsClients.size}`);
-
-  try {
-    ws.send(JSON.stringify(generateProcessMetrics()));
-  } catch (e) {
-    console.error('Failed to send initial WS data:', e.message);
-  }
-
-  ws.on('close', () => {
-    wsClients.delete(ws);
-    console.log(`WebSocket client disconnected. Total clients: ${wsClients.size}`);
-  });
-
-  ws.on('error', (err) => {
-    console.error('WebSocket error:', err.message);
-    wsClients.delete(ws);
-  });
-});
-
-let streamInterval = setInterval(() => {
-  if (wsClients.size === 0) return;
-
-  const metrics = generateProcessMetrics();
-  const message = JSON.stringify(metrics);
-
-  wsClients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      try {
-        client.send(message);
-      } catch (err) {
-        console.error('Failed to send WS message:', err.message);
-        wsClients.delete(client);
-      }
-    }
-  });
-}, 500);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('Dashboard: http://0.0.0.0:' + PORT);
