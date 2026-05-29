@@ -2634,13 +2634,60 @@ const wss = new WebSocket.Server({ server });
 const wsClients = new Set();
 
 function generateProcessMetrics() {
-  return {
-    pid: 4821,
-    is_running: true,
-    openclaw_cpu_user: parseFloat((10 + Math.random() * 15).toFixed(1)),
-    openclaw_cpu_system: parseFloat((2 + Math.random() * 8).toFixed(1)),
-    timestamp: Math.floor(Date.now() / 1000)
-  };
+  try {
+    const pids = execSync('pgrep yes', {
+      encoding: 'utf8',
+      shell: '/bin/bash'
+    }).trim().split('\n').filter(p => p);
+
+    if (pids.length === 0) {
+      return {
+        pid: null,
+        is_running: false,
+        openclaw_cpu_user: 0,
+        openclaw_cpu_system: 0,
+        timestamp: Math.floor(Date.now() / 1000)
+      };
+    }
+
+    const metrics = pids.map(pid => {
+      try {
+        const output = execSync(`python3 openclaw_monitor.py ${pid}`, {
+          encoding: 'utf8',
+          timeout: 2000,
+          shell: '/bin/bash'
+        }).trim();
+
+        const data = JSON.parse(output);
+        return {
+          pid: data.pid,
+          is_running: true,
+          openclaw_cpu_user: data.cpu_user,
+          openclaw_cpu_system: data.cpu_system,
+          timestamp: Math.floor(Date.now() / 1000)
+        };
+      } catch (e) {
+        return null;
+      }
+    }).filter(m => m !== null);
+
+    return metrics.length > 0 ? metrics : {
+      pid: null,
+      is_running: false,
+      openclaw_cpu_user: 0,
+      openclaw_cpu_system: 0,
+      timestamp: Math.floor(Date.now() / 1000)
+    };
+  } catch (err) {
+    console.error('Failed to get metrics:', err.message);
+    return {
+      pid: null,
+      is_running: false,
+      openclaw_cpu_user: 0,
+      openclaw_cpu_system: 0,
+      timestamp: Math.floor(Date.now() / 1000)
+    };
+  }
 }
 
 wss.on('connection', (ws) => {
