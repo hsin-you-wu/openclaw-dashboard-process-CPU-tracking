@@ -2690,6 +2690,7 @@ function generateProcessMetrics() {
       }
     }).filter(m => m !== null);
 
+    console.log(`[DEBUG] Calculated metrics for ${metrics.length} PIDs out of ${pids.length}`);
     return metrics.length > 0 ? metrics : {
       pid: null,
       is_running: false,
