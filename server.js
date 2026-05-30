@@ -2634,11 +2634,28 @@ const wss = new WebSocket.Server({ server });
 const wsClients = new Set();
 
 function generateProcessMetrics() {
+  const { execSync } = require('child_process');
   try {
-    const pids = execSync('pgrep yes', {
-      encoding: 'utf8',
-      shell: '/bin/bash'
-    }).trim().split('\n').filter(p => p);
+    let pids = [];
+
+    if (process.platform === 'win32') {
+      // Windows: 用 tasklist 搜尋 node 或 python 進程
+      const output = execSync('tasklist /FO CSV', { encoding: 'utf8' }).split('\n');
+      pids = output
+        .filter(line => /node|python/i.test(line))
+        .map(line => {
+          const parts = line.split(',');
+          return parts[1] ? parts[1].trim().replace(/"/g, '') : null;
+        })
+        .filter(p => p);
+    } else {
+      // Linux/macOS: 用 ps 搜尋
+      const output = execSync("ps aux | grep -E 'node|python' | grep -v grep | awk '{print $2}'", {
+        encoding: 'utf8',
+        shell: '/bin/bash'
+      }).trim();
+      pids = output.split('\n').filter(p => p);
+    }
 
     if (pids.length === 0) {
       return {
