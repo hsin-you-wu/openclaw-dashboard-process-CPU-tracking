@@ -2649,12 +2649,13 @@ function generateProcessMetrics() {
         })
         .filter(p => p);
     } else {
-      // Linux/macOS: 用 ps 搜尋
-      const output = execSync("ps aux | grep -E 'node|python' | grep -v grep | awk '{print $2}'", {
+      // Linux/macOS: 用 pgrep 搜尋 openclaw 進程
+      const output = execSync("pgrep -f openclaw", {
         encoding: 'utf8',
         shell: '/bin/bash'
       }).trim();
       pids = output.split('\n').filter(p => p);
+      console.log('[DEBUG] Found PIDs:', pids);
     }
 
     if (pids.length === 0) {
