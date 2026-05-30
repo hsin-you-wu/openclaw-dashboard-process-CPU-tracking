@@ -2736,7 +2736,7 @@ let streamInterval = setInterval(() => {
 
   const metrics = generateProcessMetrics();
   const message = JSON.stringify(metrics);
-  console.log('[DEBUG] Sending metrics:', message.substring(0, 100));
+  console.log(`[DEBUG] Sending ${metrics.length || 1} metrics: ${message.substring(0, 200)}`);
 
   wsClients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
