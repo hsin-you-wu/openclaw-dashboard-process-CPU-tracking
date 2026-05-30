@@ -2685,6 +2685,7 @@ function generateProcessMetrics() {
           timestamp: Math.floor(Date.now() / 1000)
         };
       } catch (e) {
+        console.error(`[DEBUG] Error processing PID ${pid}:`, e.message);
         return null;
       }
     }).filter(m => m !== null);
