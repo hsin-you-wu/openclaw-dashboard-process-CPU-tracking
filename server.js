@@ -2633,30 +2633,82 @@ const wss = new WebSocket.Server({ server });
 
 const wsClients = new Set();
 
+function parsePsOutput(output) {
+  return output
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const match = line.match(/^(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/);
+      if (!match) return null;
+      return {
+        pid: match[1],
+        ppid: match[2],
+        comm: match[3],
+        args: match[4]
+      };
+    })
+    .filter(Boolean);
+}
+
+function commandBasename(value) {
+  return path.basename(String(value || '').replace(/^"|"$/g, '')).toLowerCase();
+}
+
+function isOpenClawProcess(proc) {
+  const pid = String(proc.pid || '');
+  const ppid = String(proc.ppid || '');
+  const comm = String(proc.comm || '').toLowerCase();
+  const args = String(proc.args || '');
+  const lowerArgs = args.toLowerCase();
+
+  if (!pid || pid === String(process.pid) || ppid === String(process.pid)) return false;
+  if (lowerArgs.includes('openclaw_monitor.py')) return false;
+  if (lowerArgs.includes('server.js')) return false;
+  if (lowerArgs.includes('pgrep') || lowerArgs.includes('grep') || lowerArgs.includes('ps -eo')) return false;
+
+  if (comm === 'openclaw') return true;
+
+  const tokens = args.match(/"[^"]+"|'[^']+'|\S+/g) || [];
+  return tokens.some(token => commandBasename(token) === 'openclaw');
+}
+
+function getOpenClawPids() {
+  const { execSync } = require('child_process');
+
+  if (process.platform === 'win32') {
+    const output = execSync('wmic process get ProcessId,ParentProcessId,Name,CommandLine /FORMAT:CSV', { encoding: 'utf8' });
+    return output
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('Node,'))
+      .map(line => {
+        const parts = line.split(',');
+        const pid = parts[parts.length - 1];
+        const ppid = parts[parts.length - 3];
+        const name = parts[parts.length - 2];
+        const commandLine = parts.slice(1, -3).join(',');
+        return { pid, ppid, comm: name, args: commandLine || name };
+      })
+      .filter(isOpenClawProcess)
+      .map(proc => proc.pid);
+  }
+
+  const output = execSync('ps -eo pid=,ppid=,comm=,args=', {
+    encoding: 'utf8',
+    shell: '/bin/bash'
+  });
+
+  return parsePsOutput(output)
+    .filter(isOpenClawProcess)
+    .map(proc => proc.pid);
+}
+
 function generateProcessMetrics() {
   const { execSync } = require('child_process');
   try {
-    let pids = [];
-
-    if (process.platform === 'win32') {
-      // Windows: 用 tasklist 搜尋 node 或 python 進程
-      const output = execSync('tasklist /FO CSV', { encoding: 'utf8' }).split('\n');
-      pids = output
-        .filter(line => /node|python/i.test(line))
-        .map(line => {
-          const parts = line.split(',');
-          return parts[1] ? parts[1].trim().replace(/"/g, '') : null;
-        })
-        .filter(p => p);
-    } else {
-      // Linux/macOS: 用 pgrep 搜尋 openclaw 進程
-      const output = execSync("pgrep -f openclaw", {
-        encoding: 'utf8',
-        shell: '/bin/bash'
-      }).trim();
-      pids = output.split('\n').filter(p => p);
-      console.log('[DEBUG] Found PIDs:', pids);
-    }
+    const pids = getOpenClawPids();
+    console.log('[DEBUG] Found OpenClaw PIDs:', pids);
 
     if (pids.length === 0) {
       return {
