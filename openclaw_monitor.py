@@ -24,7 +24,7 @@ def get_process_ticks(pid):
     except FileNotFoundError:
         return None, 0, 0
 
-def calculate_cpu(pid, interval=2):
+def calculate_cpu(pid, interval=0.5):
     # 獲取 CPU 核心數做乘數修正
     num_cores = os.cpu_count() or 1
 

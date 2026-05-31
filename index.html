@@ -7318,12 +7318,17 @@ function lwPushData(data) {
   }
 }
 
+function lwIsCpuSample(sample) {
+  return sample && sample.pid != null && sample.openclaw_cpu_user !== undefined
+}
+
 // WebSocket 連線人員 2 的 server
 let lwSocket = null
 
 function lwStartReal() {
   const token = getStoredToken()
-  lwSocket = new WebSocket('ws://localhost:7000?token=' + encodeURIComponent(token))
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  lwSocket = new WebSocket(wsProtocol + '//' + window.location.host + '?token=' + encodeURIComponent(token))
 
   lwSocket.onopen = () => {
     console.log('🦞 WebSocket 連線成功')
@@ -7332,11 +7337,14 @@ function lwStartReal() {
   lwSocket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
-      if (data.pid && data.openclaw_cpu_user !== undefined) {
+      if (Array.isArray(data)) {
+        const samples = data.filter(lwIsCpuSample)
+        if (samples.length > 0) lwPushData(samples)
+      } else if (lwIsCpuSample(data)) {
         lwPushData(data)
       }
     } catch (e) {
-      console.error('JSON 解析失敗：', e)
+      console.error('Failed to parse CPU stream payload', e)
     }
   }
 
