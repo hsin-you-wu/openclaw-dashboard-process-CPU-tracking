@@ -2672,7 +2672,7 @@ function generateProcessMetrics() {
       try {
         const output = execSync(`python3 openclaw_monitor.py ${pid}`, {
           encoding: 'utf8',
-          timeout: 2000,
+          timeout: 5000,
           shell: '/bin/bash'
         }).trim();
 
