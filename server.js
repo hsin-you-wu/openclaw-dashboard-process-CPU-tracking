@@ -2649,8 +2649,8 @@ function generateProcessMetrics() {
         })
         .filter(p => p);
     } else {
-      // Linux/macOS: 用 pgrep 搜尋 openclaw 進程
-      const output = execSync("pgrep -f openclaw", {
+      // Linux/macOS: match the actual OpenClaw TUI process name.
+      const output = execSync("pgrep -x openclaw-tui", {
         encoding: 'utf8',
         shell: '/bin/bash'
       }).trim();
